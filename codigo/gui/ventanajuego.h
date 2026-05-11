@@ -1,0 +1,4 @@
+#ifndef VENTANAJUEGO_H
+#define VENTANAJUEGO_H
+
+#endif // VENTANAJUEGO_H

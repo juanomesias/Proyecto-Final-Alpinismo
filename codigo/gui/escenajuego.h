@@ -1,0 +1,4 @@
+#ifndef ESCENAJUEGO_H
+#define ESCENAJUEGO_H
+
+#endif // ESCENAJUEGO_H
