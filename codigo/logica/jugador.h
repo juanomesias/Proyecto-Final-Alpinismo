@@ -3,7 +3,7 @@
 
 #include "entidad.h"
 
-class jugador : public Entidad
+class Jugador : public Entidad
 {
 private:
     int vida;
@@ -15,7 +15,7 @@ private:
     float fuerzaSalto;
 
 public:
-    jugador(float xInicial = 0, float yInicial = 0);
+    Jugador(float xInicial = 0, float yInicial = 0);
     void actualizar() override;
 
     void saltar();

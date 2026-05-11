@@ -1,6 +1,6 @@
 #include "jugador.h"
 
-jugador::jugador(float xInicial, float yInicial)
+Jugador::Jugador(float xInicial, float yInicial)
     : Entidad(xInicial, yInicial)
 {
     vida = 100;
