@@ -1,3 +1,10 @@
 #include "fisica.h"
 
-fisica::fisica() {}
+Fisica::Fisica(float intensidad)
+{
+    this->intensidad = intensidad;
+}
+
+Fisica::~Fisica()
+{
+}

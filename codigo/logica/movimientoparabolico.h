@@ -1,10 +1,15 @@
 #ifndef MOVIMIENTOPARABOLICO_H
 #define MOVIMIENTOPARABOLICO_H
+#include "fisica.h"
 
-class movimientoparabolico
+class MovimientoParabolico : public Fisica
 {
+private:
+    float gravedad;
 public:
-    movimientoparabolico();
+    MovimientoParabolico(float gravedad = 0.5f);
+
+    void aplicar(Entidad* entidad) override;
 };
 
 #endif // MOVIMIENTOPARABOLICO_H

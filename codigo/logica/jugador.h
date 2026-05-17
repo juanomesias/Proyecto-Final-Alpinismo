@@ -7,10 +7,10 @@ class Jugador : public Entidad
 {
 private:
     int vida;
+    int puntaje;
 
     bool tieneArmadura;
-
-    int puntaje;
+    bool enSuelo;
 
     float fuerzaSalto;
 
@@ -32,9 +32,13 @@ public:
 
     float getFuerzaSalto() const;
 
+    bool getEnSuelo() const;
+
     void setVida(int nuevaVida);
 
     void setPuntaje(int nuevoPuntaje);
+
+    void setEnSuelo(bool estado);
 };
 
 #endif // JUGADOR_H
