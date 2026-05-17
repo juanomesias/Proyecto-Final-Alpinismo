@@ -1,10 +1,17 @@
 #ifndef FISICA_H
 #define FISICA_H
+#include "entidad.h"
 
-class fisica
+class Fisica
 {
+protected:
+    float intensidad;
 public:
-    fisica();
+    Fisica(float intensidad = 0);
+
+    virtual ~Fisica();
+
+    virtual void aplicar(Entidad* entidad) = 0;
 };
 
 #endif // FISICA_H

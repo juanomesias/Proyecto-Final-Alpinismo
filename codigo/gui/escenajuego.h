@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 
 #include "../logica/jugador.h"
+#include "../logica/movimientoparabolico.h"
 
 class EscenaJuego : public QGraphicsView
 {
@@ -21,6 +22,8 @@ private:
     QTimer* timer;
 
     Jugador jugador;
+
+    MovimientoParabolico gravedad;
 
 public:
     EscenaJuego(QWidget *parent = nullptr);

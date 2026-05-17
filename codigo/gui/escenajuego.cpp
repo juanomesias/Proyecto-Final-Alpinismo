@@ -2,7 +2,8 @@
 
 EscenaJuego::EscenaJuego(QWidget *parent)
     : QGraphicsView(parent),
-    jugador(100, 100)
+    jugador(100, 100),
+    gravedad(0.5f)
 {
     escena = new QGraphicsScene(this);
 
@@ -35,6 +36,7 @@ EscenaJuego::~EscenaJuego()
 
 void EscenaJuego::actualizarJuego()
 {
+    gravedad.aplicar(&jugador);
     jugador.actualizar();
 
     jugadorVisual->setPos(
