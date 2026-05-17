@@ -4,12 +4,10 @@ Jugador::Jugador(float xInicial, float yInicial)
     : Entidad(xInicial, yInicial)
 {
     vida = 100;
-
     tieneArmadura = false;
-
     puntaje = 0;
-
     fuerzaSalto = 18;
+    enSuelo = false;
 }
 
 void Jugador::actualizar()
@@ -19,7 +17,12 @@ void Jugador::actualizar()
 
 void Jugador::saltar()
 {
-    velocidadY = -fuerzaSalto;
+    if(enSuelo)
+    {
+        velocidadY = -fuerzaSalto;
+
+        enSuelo = false;
+    }
 }
 
 void Jugador::recibirDanio(int cantidad)
@@ -60,6 +63,16 @@ int Jugador::getPuntaje() const
 float Jugador::getFuerzaSalto() const
 {
     return fuerzaSalto;
+}
+
+bool Jugador::getEnSuelo() const
+{
+    return enSuelo;
+}
+
+void Jugador::setEnSuelo(bool estado)
+{
+    enSuelo = estado;
 }
 
 void Jugador::setVida(int nuevaVida)

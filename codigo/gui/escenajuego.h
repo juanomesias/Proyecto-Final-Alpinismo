@@ -16,14 +16,12 @@ class EscenaJuego : public QGraphicsView
 
 private:
     QGraphicsScene* escena;
-
     QGraphicsRectItem* jugadorVisual;
-
     QTimer* timer;
 
     Jugador jugador;
-
     MovimientoParabolico gravedad;
+    float sueloY;
 
 public:
     EscenaJuego(QWidget *parent = nullptr);
@@ -34,6 +32,7 @@ public:
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
 };
 
 #endif // ESCENAJUEGO_H
