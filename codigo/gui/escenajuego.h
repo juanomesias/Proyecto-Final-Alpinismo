@@ -9,6 +9,9 @@
 
 #include "../logica/jugador.h"
 #include "../logica/movimientoparabolico.h"
+#include "../logica/plataforma.h"
+#include "../logica/obstaculo.h"
+#include <vector>
 
 class EscenaJuego : public QGraphicsView
 {
@@ -21,7 +24,12 @@ private:
 
     Jugador jugador;
     MovimientoParabolico gravedad;
-    float sueloY;
+
+    std::vector<Plataforma> plataformas;
+
+    std::vector<Obstaculo> obstaculos;
+
+    std::vector<QGraphicsRectItem*> obstaculosVisuales;
 
 public:
     EscenaJuego(QWidget *parent = nullptr);
