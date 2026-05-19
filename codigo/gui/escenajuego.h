@@ -24,7 +24,6 @@ private:
 
     Jugador jugador;
     MovimientoParabolico gravedad;
-    float sueloY;
 
     std::vector<Plataforma> plataformas;
 
