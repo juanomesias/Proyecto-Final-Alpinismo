@@ -1,0 +1,9 @@
+.qtcreator/
+build/
+*.pro.user
+*.pro.user.*
+CMakeLists.txt.user
+*.o
+*.obj
+*.exe
+*.dll
