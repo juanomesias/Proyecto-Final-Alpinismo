@@ -3,6 +3,7 @@ QT += core gui widgets multimedia
 CONFIG += c++17
 
 SOURCES += \
+    logica/proyectil.cpp \
     main.cpp \
     logica/juego.cpp \
     logica/nivel.cpp \
@@ -39,4 +40,5 @@ HEADERS += \
     logica/efectofriccion.h \
     logica/plataforma.h \
     gui/ventanajuego.h \
-    gui/escenajuego.h
+    gui/escenajuego.h \
+    logica/proyectil.h
