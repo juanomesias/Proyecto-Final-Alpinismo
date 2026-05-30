@@ -2,6 +2,9 @@
 #define ENEMIGO_H
 
 #include "entidad.h"
+#include "proyectil.h"
+#include "agenteinteligente.h"
+#include <vector>
 
 enum TipoEnemigo
 {
@@ -15,7 +18,9 @@ enum EstadoEnemigo
     QUIETO,
     PATRULLANDO,
     EMBISTIENDO,
+    GIRANDO,
     RECUPERANDO
+    ATAQUE_RADIAL
 };
 
 class Enemigo : public Entidad
@@ -36,11 +41,25 @@ private:
     int direccion;
 
     float rangoDeteccion;
-
     float tiempoEstado;
 
-    float objetivoX;
-    float objetivoY;
+    float gravedadProyectil;
+    bool invulnerable;
+    bool salvaRadialGenerada;
+
+    float jugadorObjetivoX;
+    float jugadorObjetivoY;
+
+    AgenteInteligente* ia;
+    std::vector<Proyectil> proyectiles;
+
+    void actualizarPatrullero();
+    void actualizarVolador();
+    void actualizarJefe();
+    void actualizarProyectiles();
+
+    void lanzarProyectilDireccionado(float direccionX, float direccionY);
+    void lanzarSalvaRadial();
 
 public:
     Enemigo(float xInicial = 0,
@@ -51,7 +70,7 @@ public:
 
     void actualizar() override;
 
-    void detectarJugador(float xJugador, float yJugador);
+    void percibirJugador(float xJugador, float yJugador);
 
     void recibirDanio(int cantidad);
 
@@ -63,6 +82,9 @@ public:
     int getVida() const;
     int getDanio() const;
     bool estaVivo() const;
+    bool estaInvulnerable() const;
+
+    const std::vector<Proyectil>& getProyectiles() const;
 };
 
 #endif // ENEMIGO_H
