@@ -4,6 +4,7 @@
 #include "entidad.h"
 #include "proyectil.h"
 #include "agenteinteligente.h"
+#include "movimientoparabolico.h"
 #include <vector>
 
 enum TipoEnemigo
@@ -19,7 +20,7 @@ enum EstadoEnemigo
     PATRULLANDO,
     EMBISTIENDO,
     GIRANDO,
-    RECUPERANDO
+    RECUPERANDO,
     ATAQUE_RADIAL
 };
 
@@ -43,7 +44,6 @@ private:
     float rangoDeteccion;
     float tiempoEstado;
 
-    float gravedadProyectil;
     bool invulnerable;
     bool salvaRadialGenerada;
 
@@ -52,13 +52,14 @@ private:
 
     AgenteInteligente* ia;
     std::vector<Proyectil> proyectiles;
+    MovimientoParabolico gravedadProyectiles;
 
     void actualizarPatrullero();
     void actualizarVolador();
     void actualizarJefe();
     void actualizarProyectiles();
 
-    void lanzarProyectilDireccionado(float direccionX, float direccionY);
+    void lanzarProyectilDireccionado(float direccionX,float direccionY);
     void lanzarSalvaRadial();
 
 public:
@@ -85,6 +86,7 @@ public:
     bool estaInvulnerable() const;
 
     const std::vector<Proyectil>& getProyectiles() const;
+    ~Enemigo() override;
 };
 
 #endif // ENEMIGO_H

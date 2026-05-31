@@ -8,7 +8,7 @@ enum EstadoIA
     OBSERVANDO,
     DISPARANDO,
     GOLPE_GIRATORIO,
-    RECUPERANDO,
+    RECUPERANDO_IA,
     SALVA_RADIAL
 };
 
@@ -38,10 +38,6 @@ private:
     bool invulnerable;
     bool salvaEjecutada;
 
-    bool disparoPendiente;
-    bool giroPendiente;
-    bool salvaPendiente;
-
     float tiempoDesdeUltimoDisparo;
     float tiempoEnAtaque;
     float tiempoEnVulnerable;
@@ -69,7 +65,6 @@ private:
 
     void calcularDistancia();
     void activarFaseDos();
-    void ajustarFaseDos();
 
 public:
     AgenteInteligente(int vidaMaxima = 100);
@@ -104,6 +99,11 @@ public:
     float getIntervaloDisparo() const;
     float getDuracionGiro() const;
     float getDuracionVulnerable() const;
+
+    float getXJugador() const;
+    float getYJugador() const;
+    float getXEnemigo() const;
+    float getYEnemigo() const;
 };
 
 #endif // AGENTEINTELIGENTE_H
