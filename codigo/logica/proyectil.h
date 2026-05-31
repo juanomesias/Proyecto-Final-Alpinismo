@@ -7,9 +7,7 @@ class Proyectil : public Entidad
 {
 private:
     float direccionX;
-
     float direccionY;
-
     int danio;
 
     bool activo;

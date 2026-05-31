@@ -16,10 +16,6 @@ AgenteInteligente::AgenteInteligente(int vidaMaxima)
     invulnerable = false;
     salvaEjecutada = false;
 
-    disparoPendiente = false;
-    giroPendiente = false;
-    salvaPendiente = false;
-
     tiempoDesdeUltimoDisparo = 0.0f;
     tiempoEnAtaque = 0.0f;
     tiempoEnVulnerable = 0.0f;
@@ -29,7 +25,7 @@ AgenteInteligente::AgenteInteligente(int vidaMaxima)
     duracionVulnerable = 1.0f;
     duracionSalva = 1.5f;
 
-    rangoGiro = 100.0f;
+    rangoGiro = 200.0f;
 
     velocidadMovimientoBase = 2.5f;
     velocidadMovimientoActual = velocidadMovimientoBase;
@@ -69,15 +65,11 @@ void AgenteInteligente::calcularDistancia()
 
 void AgenteInteligente::razonar()
 {
-    disparoPendiente = false;
-    giroPendiente = false;
-    salvaPendiente = false;
     ataqueActual = ATAQUE_NINGUNO;
 
     if(!faseDos && vidaActual <= vidaMaxima / 2)
     {
         activarFaseDos();
-        salvaPendiente = true;
         ataqueActual = ATAQUE_SALVA_RADIAL;
         estadoActual = SALVA_RADIAL;
         tiempoEnAtaque = 0.0f;
@@ -85,7 +77,7 @@ void AgenteInteligente::razonar()
     }
 
     if(estadoActual == GOLPE_GIRATORIO ||
-        estadoActual == RECUPERANDO ||
+        estadoActual == RECUPERANDO_IA ||
         estadoActual == SALVA_RADIAL)
     {
         return;
@@ -98,7 +90,6 @@ void AgenteInteligente::razonar()
 
     if(distanciaJugador <= rangoGiro)
     {
-        giroPendiente = true;
         ataqueActual = ATAQUE_GIRO;
         estadoActual = GOLPE_GIRATORIO;
         invulnerable = true;
@@ -106,8 +97,6 @@ void AgenteInteligente::razonar()
         tiempoDesdeUltimoDisparo = 0.0f;
         return;
     }
-
-    disparoPendiente = true;
     ataqueActual = ATAQUE_PROYECTIL;
     estadoActual = DISPARANDO;
     tiempoDesdeUltimoDisparo = 0.0f;
@@ -144,13 +133,13 @@ void AgenteInteligente::actuar(float deltaTiempo)
 
         if(tiempoEnAtaque >= duracionGiro)
         {
-            estadoActual = RECUPERANDO;
+            estadoActual = RECUPERANDO_IA;
             invulnerable = false;
             tiempoEnAtaque = 0.0f;
             tiempoEnVulnerable = 0.0f;
         }
     }
-    else if(estadoActual == RECUPERANDO)
+    else if(estadoActual == RECUPERANDO_IA)
     {
         tiempoEnVulnerable += deltaTiempo;
 
@@ -168,7 +157,6 @@ void AgenteInteligente::actuar(float deltaTiempo)
         {
             estadoActual = OBSERVANDO;
             tiempoEnAtaque = 0.0f;
-            salvaPendiente = false;
             salvaEjecutada = true;
         }
     }
@@ -220,34 +208,21 @@ void AgenteInteligente::activarFaseDos()
     intervaloDisparo = 1.0f;
 }
 
-void AgenteInteligente::ajustarFaseDos()
-{
-    if(faseDos)
-    {
-        velocidadMovimientoActual = velocidadMovimientoBase * 1.5f;
-        velocidadProyectilActual = velocidadProyectilBase * 1.25f;
-        intervaloDisparo = 1.0f;
-    }
-}
-
 void AgenteInteligente::consumirDecision()
 {
-    disparoPendiente = false;
-    giroPendiente = false;
-    salvaPendiente = false;
-
     if(estadoActual == DISPARANDO)
     {
         estadoActual = OBSERVANDO;
     }
+    ataqueActual = ATAQUE_NINGUNO;
 }
 
-AgenteInteligente::EstadoIA AgenteInteligente::getEstadoActual() const
+EstadoIA AgenteInteligente::getEstadoActual() const
 {
     return estadoActual;
 }
 
-AgenteInteligente::AtaqueIA AgenteInteligente::getAtaqueActual() const
+AtaqueIA AgenteInteligente::getAtaqueActual() const
 {
     return ataqueActual;
 }
@@ -305,4 +280,24 @@ float AgenteInteligente::getDuracionGiro() const
 float AgenteInteligente::getDuracionVulnerable() const
 {
     return duracionVulnerable;
+}
+
+float AgenteInteligente::getXJugador() const
+{
+    return xJugador;
+}
+
+float AgenteInteligente::getYJugador() const
+{
+    return yJugador;
+}
+
+float AgenteInteligente::getXEnemigo() const
+{
+    return xEnemigo;
+}
+
+float AgenteInteligente::getYEnemigo() const
+{
+    return yEnemigo;
 }
