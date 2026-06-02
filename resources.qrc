@@ -1,7 +1,11 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/fondo_menu.png</file>
-        <file>resources/fondo_nivel1.png</file>
+
+        <file>resources/fondo_nivel1_1.png</file>
+        <file>resources/fondo_nivel1_2.png</file>
+        <file>resources/fondo_nivel1_3.png</file>
+
         <file>resources/sprites.png</file>
     </qresource>
 </RCC>

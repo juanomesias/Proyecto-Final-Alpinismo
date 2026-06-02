@@ -1,6 +1,6 @@
 #ifndef FISICA_H
 #define FISICA_H
-#include "entidad.h"
+#include "../logica/entidad.h"
 
 class Fisica
 {

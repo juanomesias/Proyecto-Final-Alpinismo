@@ -3,32 +3,88 @@
 EscenaJuego::EscenaJuego(QWidget *parent)
     : QGraphicsView(parent),
     jugador(100, 100),
-    gravedad(0.5f) {
-
+    gravedad(0.5f)
+{
     escena = new QGraphicsScene(this);
     setScene(escena);
+    etapa = 1;
 
-    QPixmap fondo(":/resources/fondo_nivel1.png");
+    QPixmap fondo(
+        ":/resources/fondo_nivel1_1.png"
+        );
 
-    escena->setBackgroundBrush(fondo);
+    fondo = fondo.scaled(
+        800,
+        600,
+        Qt::IgnoreAspectRatio,
+        Qt::SmoothTransformation
+        );
 
-    escena->setSceneRect(0, 0, 800, 600);
+    fondoVisual =
+        escena->addPixmap(fondo);
 
+    fondoVisual->setPos(0,0);
 
-    spriteQuieto.load(":/resources/sprites.png");
+    fondoVisual->setZValue(-100);
 
-    spriteQuieto = spriteQuieto.copy(0,0,64,64);
+    fondo = fondo.scaled(
+        800,
+        600,
+        Qt::IgnoreAspectRatio,
+        Qt::SmoothTransformation
+        );
+
+    QGraphicsPixmapItem* fondoVisual =
+        escena->addPixmap(fondo);
+
+    fondoVisual->setPos(0,0);
+
+    fondoVisual->setZValue(-100);
+
+    escena->setSceneRect(
+        0,
+        0,
+        800,
+        600
+        );
+
+    spriteQuieto.load(
+        ":/resources/sprites.png"
+        );
+
+    spriteQuieto =
+        spriteQuieto.copy(
+            0,
+            0,
+            64,
+            64
+            );
 
     jugadorVisual =
         escena->addPixmap(
-            spriteQuieto.scaled(70,70)
+            spriteQuieto.scaled(
+                70,
+                70
+                )
             );
     plataformas.push_back(
-        Plataforma(0, 550, 800, 50)
+        Plataforma(120,470,150,25)
         );
 
     plataformas.push_back(
-        Plataforma(300, 400, 200, 30)
+        Plataforma(320,390,150,25)
+        );
+
+    plataformas.push_back(
+        Plataforma(520,310,150,25)
+        );
+
+    plataformas.push_back(
+        Plataforma(260,230,150,25)
+        );
+
+    plataformas.push_back(
+        Plataforma(580,140,150,25)
         );
 
     for(const Plataforma& plataforma : plataformas)
@@ -48,6 +104,17 @@ EscenaJuego::EscenaJuego(QWidget *parent)
             plataforma.getY()
             );
     }
+
+    meta =
+        escena->addRect(
+            700,
+            50,
+            50,
+            50,
+            QPen(Qt::green),
+            QBrush(Qt::green)
+            );
+
 
     obstaculos.push_back(
         Obstaculo(500, 500, 20, 50, 50)
@@ -167,6 +234,39 @@ void EscenaJuego::actualizarJuego()
         obstaculosVisuales[i]->setPos(
             obstaculos[i].getX(),
             obstaculos[i].getY()
+            );
+    }
+
+    if(
+        jugador.getY() < 400 &&
+        etapa == 1
+     )
+    {
+        etapa = 2;
+
+        fondoVisual->setPixmap(
+            QPixmap(
+                ":/resources/fondo_nivel1_2.png"
+                ).scaled(
+                    800,
+                    600
+                    )
+            );
+    }
+    if(
+        jugador.getY() < 200 &&
+        etapa == 2
+        )
+    {
+        etapa = 3;
+
+        fondoVisual->setPixmap(
+            QPixmap(
+                ":/resources/fondo_nivel1_3.png"
+                ).scaled(
+                    800,
+                    600
+                    )
             );
     }
 }

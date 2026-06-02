@@ -4,6 +4,7 @@ CONFIG += c++17
 
 SOURCES += \
     gui/menuprincipal.cpp \
+    logica/meta.cpp \
     main.cpp \
     logica/juego.cpp \
     logica/nivel.cpp \
@@ -15,10 +16,10 @@ SOURCES += \
     logica/obstaculo.cpp \
     logica/powerup.cpp \
     logica/agenteinteligente.cpp \
-    logica/fisica.cpp \
-    logica/movimientoparabolico.cpp \
-    logica/movimientooscilatorio.cpp \
-    logica/efectofriccion.cpp \
+    fisica/fisica.cpp \
+    fisica/movimientoparabolico.cpp \
+    fisica/movimientooscilatorio.cpp \
+    fisica/efectofriccion.cpp \
     logica/plataforma.cpp \
     gui/ventanajuego.cpp \
     gui/escenajuego.cpp
@@ -26,6 +27,7 @@ SOURCES += \
 HEADERS += \
     gui/menuprincipal.h \
     logica/juego.h \
+    logica/meta.h \
     logica/nivel.h \
     logica/nivelrunner.h \
     logica/nivelplataforma.h \
@@ -35,10 +37,10 @@ HEADERS += \
     logica/obstaculo.h \
     logica/powerup.h \
     logica/agenteinteligente.h \
-    logica/fisica.h \
-    logica/movimientoparabolico.h \
-    logica/movimientooscilatorio.h \
-    logica/efectofriccion.h \
+    fisica/fisica.h \
+    fisica/movimientoparabolico.h \
+    fisica/movimientooscilatorio.h \
+    fisica/efectofriccion.h \
     logica/plataforma.h \
     gui/ventanajuego.h \
     gui/escenajuego.h
