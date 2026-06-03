@@ -32,8 +32,17 @@ private:
     QGraphicsPixmapItem* fondoVisual;
 
     int etapa;
+    int subEtapa;
+    int alturaEscalada;
+
+    int nivelActual;
+    float limiteNivel;
 
     QGraphicsPixmapItem* jugadorVisual;
+
+    void cargarNivel(int id);
+    void cambiarNivel();
+    void limpiarPlataformas();
 
     QPixmap spriteQuieto;
     QPixmap spriteCorrer;
@@ -56,6 +65,8 @@ private:
 
     std::vector<QGraphicsEllipseItem*> powerupsVisuales;
 
+    std::vector<QGraphicsPixmapItem*> plataformasVisuales;
+
     QGraphicsRectItem* meta;
 
     QGraphicsTextItem* textoVida;
@@ -73,11 +84,14 @@ public:
 
     void actualizarJuego();
 
+    void cargarEscalada(int nivel);
+
 protected:
 
     void keyPressEvent(QKeyEvent *event) override;
 
     void keyReleaseEvent(QKeyEvent *event) override;
+
 };
 
 #endif

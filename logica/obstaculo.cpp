@@ -15,6 +15,7 @@ Obstaculo::Obstaculo(float xInicial,
 }
 
 int Obstaculo::getDanio() const
+
 {
     return danio;
 }

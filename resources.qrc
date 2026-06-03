@@ -1,11 +1,20 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/fondo_menu.png</file>
+         <file>resources/fondo_nivel1_1.png</file>
+         <file>resources/fondo_nivel1_2.png</file>
+         <file>resources/fondo_nivel1_3.png</file>
+         <file>resources/fondo_nivel1_4.png</file>
+         <file>resources/fondo_nivel1_5.png</file>
+         <file>resources/fondo_nivel1_6.png</file>
+         <file>resources/fondo_nivel1_7.png</file>
+         <file>resources/fondo_nivel1_8.png</file>
+         <file>resources/fondo_nivel1_9.png</file>
+         <file>resources/fondo_nivel1_10.png</file>
+         <file>resources/fondo_nivel1_11.png</file>
+         <file>resources/Final1.png</file>
 
-        <file>resources/fondo_nivel1_1.png</file>
-        <file>resources/fondo_nivel1_2.png</file>
-        <file>resources/fondo_nivel1_3.png</file>
-
+       
         <file>resources/sprites.png</file>
     </qresource>
 </RCC>

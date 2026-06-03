@@ -13,7 +13,7 @@ Jugador::Jugador(float xInicial, float yInicial)
     enSuelo = false;
     velocidadExtra = false;
 
-    fuerzaSalto = 18;
+    fuerzaSalto = 10;
 
     velocidadNormal = 5;
     velocidadActual = 5;
