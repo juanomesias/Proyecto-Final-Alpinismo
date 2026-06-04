@@ -48,10 +48,29 @@ private:
     void limpiarPlataformas();
     void limpiarObstaculos();
     void agregarPlataforma(float x, float y, float ancho, float alto);
+    void agregarPiso(float x, float y, float ancho, float alto);
+    void recibirDanio(int cantidad);
+    void actualizarVidaVisual();
+    void crearPiedras();
+    void actualizarPiedras();
+    void reiniciarPiedra(int indice);
+    void crearAyuda();
+    void actualizarAyuda();
+    void reiniciarAyuda();
+    void curarJugador(int cantidad);
+    void actualizarHud();
 
     QPixmap spriteQuieto;
     QPixmap spriteCorrer;
     QPixmap spriteSaltar;
+    QPixmap spriteCayendo;
+    QPixmap spriteQuietoReves;
+    QPixmap spriteSaltarReves;
+    QPixmap spriteCayendoReves;
+    QPixmap spriteMuerto;
+    QPixmap spritePlataformaNieve;
+    QPixmap spritePiso;
+    QPixmap spriteAyuda;
     QTimer* timer;
 
     Jugador              jugador;
@@ -64,9 +83,25 @@ private:
     std::vector<PowerUp>               powerups;
     std::vector<QGraphicsEllipseItem*> powerupsVisuales;
     std::vector<QGraphicsPixmapItem*>  plataformasVisuales;
+    std::vector<QGraphicsPixmapItem*>  piedrasVisuales;
+    std::vector<float>                 velocidadesPiedras;
+    std::vector<QPixmap>               spritesPiedras;
+    QGraphicsPixmapItem* ayudaVisual = nullptr;
+    float velocidadAyuda = 2.5f;
 
     QGraphicsRectItem*  meta       = nullptr;
+    QGraphicsPixmapItem* vidaVisual = nullptr;
     QGraphicsTextItem*  textoVida;
+    QPixmap vidaFull;
+    QPixmap vidaUnoMenos;
+    QPixmap vidaMitad;
+    QPixmap vidaPoca;
+    QPixmap vidaSin;
+    int vidaJugador = 100;
+    float inicioCaidaY = 0;
+    bool estabaCayendo = false;
+    bool juegoTerminado = false;
+    bool mirandoIzquierda = false;
     bool bloqueoCambio = false;
     bool cambioEscenaRealizado = false;
     QGraphicsTextItem*  textoNivel;

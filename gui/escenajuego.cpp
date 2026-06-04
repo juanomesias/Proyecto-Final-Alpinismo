@@ -1,11 +1,60 @@
 #include "escenajuego.h"
 
 #include <algorithm>
+#include <QPainter>
+#include <QRandomGenerator>
 
 static const int ANCHO_PANTALLA = 800;
 static const int ALTO_PANTALLA  = 600;
 static const int NUM_FONDOS     = 11;
 static const int FONDOS_RUNNER  = 3;
+static const int FONDOS_ESCALADA = 8;
+static const int CANTIDAD_PIEDRAS = 8;
+
+static QPixmap quitarFondoAzul(const QString& ruta)
+{
+    QImage imagen(ruta);
+    if(imagen.isNull()) return QPixmap();
+
+    imagen = imagen.convertToFormat(QImage::Format_ARGB32);
+
+    for(int y = 0; y < imagen.height(); y++)
+    {
+        for(int x = 0; x < imagen.width(); x++)
+        {
+            QColor color = imagen.pixelColor(x, y);
+            if(color.blue() > 120 &&
+                color.blue() > color.red() + 35 &&
+                color.blue() > color.green() + 25)
+            {
+                color.setAlpha(0);
+                imagen.setPixelColor(x, y, color);
+            }
+        }
+    }
+
+    return QPixmap::fromImage(imagen);
+}
+
+static QPixmap quitarFondoNegro(const QPixmap& pixmap)
+{
+    QImage imagen = pixmap.toImage().convertToFormat(QImage::Format_ARGB32);
+
+    for(int y = 0; y < imagen.height(); y++)
+    {
+        for(int x = 0; x < imagen.width(); x++)
+        {
+            QColor color = imagen.pixelColor(x, y);
+            if(color.red() < 18 && color.green() < 18 && color.blue() < 18)
+            {
+                color.setAlpha(0);
+                imagen.setPixelColor(x, y, color);
+            }
+        }
+    }
+
+    return QPixmap::fromImage(imagen);
+}
 
 EscenaJuego::EscenaJuego(QWidget *parent)
     : QGraphicsView(parent),
@@ -18,7 +67,7 @@ EscenaJuego::EscenaJuego(QWidget *parent)
     subEtapa = 1;
 
     const int mundoAncho = ANCHO_PANTALLA * FONDOS_RUNNER;
-    const int mundoAlto  = ALTO_PANTALLA * (NUM_FONDOS - FONDOS_RUNNER + 1);
+    const int mundoAlto  = ALTO_PANTALLA * (FONDOS_ESCALADA + 2);
     const int pisoBaseY  = mundoAlto - ALTO_PANTALLA;
 
     escena->setSceneRect(0, 0, mundoAncho, mundoAlto);
@@ -34,6 +83,7 @@ EscenaJuego::EscenaJuego(QWidget *parent)
         ":/resources/fondo_nivel1_8.png",
         ":/resources/fondo_nivel1_9.png",
         ":/resources/fondo_nivel1_10.png",
+        ":/resources/fondo_nivel1_11.png",
         ":/resources/Final1.png"
     };
 
@@ -51,6 +101,8 @@ EscenaJuego::EscenaJuego(QWidget *parent)
         {
             item->setPos(ANCHO_PANTALLA * i, pisoBaseY);
         }
+        else if(i == fondos.size() - 1)
+            item->setPos(ANCHO_PANTALLA * (FONDOS_RUNNER - 1), 0);
         else
         {
             const int alturaEscalada = i - FONDOS_RUNNER + 1;
@@ -62,15 +114,41 @@ EscenaJuego::EscenaJuego(QWidget *parent)
         fondosItems.push_back(item);
     }
 
-    spriteQuieto.load(":/resources/sprites.png");
-    spriteQuieto = spriteQuieto.copy(0, 0, 64, 64);
-    jugadorVisual = escena->addPixmap(spriteQuieto.scaled(70, 70));
+    QPixmap hojaSprites(":/resources/sprites.png");
+    QPixmap hojaSpritesReves(":/resources/spritesreves.png");
+    spriteQuieto = quitarFondoNegro(hojaSprites.copy(45, 45, 260, 280));
+    spriteSaltar = quitarFondoNegro(hojaSprites.copy(330, 45, 260, 290));
+    spriteCayendo = quitarFondoNegro(hojaSprites.copy(55, 340, 300, 230));
+    spriteQuietoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 85, 320, 380));
+    spriteSaltarReves = quitarFondoNegro(hojaSpritesReves.copy(560, 80, 330, 400));
+    spriteCayendoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 520, 420, 275));
+    spriteMuerto = quitarFondoNegro(QPixmap(":/resources/Muerto.png"));
+    spriteAyuda = quitarFondoNegro(QPixmap(":/resources/vida.png")).scaled(
+        55, 55, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    spritePlataformaNieve = quitarFondoNegro(hojaSprites.copy(440, 375, 390, 180));
+    spritePiso.load(":/resources/piso.png");
+
+    jugadorVisual = escena->addPixmap(spriteQuieto.scaled(80, 80, Qt::KeepAspectRatio,
+                                                          Qt::SmoothTransformation));
     jugadorVisual->setZValue(10);
 
     jugador.setX(100);
     jugador.setY(pisoBaseY + 450);
 
     construirMundo(mundoAlto);
+
+    vidaFull.load(":/resources/fullvida.png");
+    vidaUnoMenos.load(":/resources/unomenos.png");
+    vidaMitad.load(":/resources/mitadvida.png");
+    vidaPoca.load(":/resources/pocavida.png");
+    vidaSin.load(":/resources/sinvida.png");
+
+    vidaVisual = escena->addPixmap(vidaFull.scaled(115, 45, Qt::KeepAspectRatio,
+                                                   Qt::SmoothTransformation));
+    vidaVisual->setZValue(1000);
+
+    crearPiedras();
+    crearAyuda();
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -89,13 +167,26 @@ void EscenaJuego::agregarPlataforma(float x, float yMundo, float ancho, float al
 {
     plataformas.push_back(Plataforma(x, yMundo, ancho, alto));
 
-    QPixmap spritePlataforma(":/resources/sprites.png");
     QGraphicsPixmapItem* roca = escena->addPixmap(
-        spritePlataforma.copy(390, 180, 170, 120).scaled(ancho, alto));
+        spritePlataformaNieve.scaled(ancho, alto, Qt::IgnoreAspectRatio,
+                                     Qt::SmoothTransformation));
 
     roca->setPos(x, yMundo);
     roca->setZValue(5);
     plataformasVisuales.push_back(roca);
+}
+
+void EscenaJuego::agregarPiso(float x, float yMundo, float ancho, float alto)
+{
+    plataformas.push_back(Plataforma(x, yMundo, ancho, alto));
+
+    QGraphicsPixmapItem* piso = escena->addPixmap(
+        spritePiso.scaled(ancho, alto, Qt::IgnoreAspectRatio,
+                          Qt::SmoothTransformation));
+
+    piso->setPos(x, yMundo);
+    piso->setZValue(4);
+    plataformasVisuales.push_back(piso);
 }
 
 void EscenaJuego::construirMundo(int mundoAlto)
@@ -119,7 +210,7 @@ void EscenaJuego::construirMundo(int mundoAlto)
     };
 
     // Fondos 1, 2 y 3: recorrido horizontal.
-    agregarPlataforma(0, YBase(550), ANCHO_PANTALLA * FONDOS_RUNNER, 50);
+    agregarPiso(0, YBase(550), ANCHO_PANTALLA * FONDOS_RUNNER, 50);
 
     // Fondo 3: primeras plataformas para empezar a subir.
     agregarPlataforma(XEscalada(590), YBase(450), 130, 25);
@@ -129,7 +220,7 @@ void EscenaJuego::construirMundo(int mundoAlto)
     agregarPlataforma(XEscalada(360), YBase(50),  130, 25);
 
     // Desde aqui cada fondo queda encima del anterior.
-    for(int fondo = 4; fondo <= 10; fondo++)
+    for(int fondo = 4; fondo <= 11; fondo++)
     {
         const bool derecha = (fondo % 2 == 0);
 
@@ -141,15 +232,12 @@ void EscenaJuego::construirMundo(int mundoAlto)
         agregarPlataforma(XEscalada(derecha ? 430 : 250), YEscalada(fondo, 50),  140, 25);
     }
 
-    // Fondo final.
-    agregarPlataforma(XEscalada(170), YEscalada(11, 550), 170, 25);
-    agregarPlataforma(XEscalada(420), YEscalada(11, 410), 170, 25);
-    agregarPlataforma(XEscalada(300), YEscalada(11, 260), 200, 25);
-    agregarPlataforma(XEscalada(470), YEscalada(11, 120), 170, 25);
+    // Final1 queda arriba de la escalada, con piso para avanzar hasta la meta.
+    agregarPiso(columnaEscaladaX, 500, ANCHO_PANTALLA, 50);
 
     meta = escena->addRect(
-        XEscalada(520),
-        YEscalada(11, 85),
+        columnaEscaladaX + 690,
+        430,
         70,
         70,
         QPen(Qt::yellow),
@@ -188,11 +276,194 @@ void EscenaJuego::cambiarNivel() {}
 void EscenaJuego::cambiarFondoPorEtapa() {}
 void EscenaJuego::cargarEscalada(int) {}
 
+void EscenaJuego::recibirDanio(int cantidad)
+{
+    if(juegoTerminado || cantidad <= 0) return;
+
+    vidaJugador = std::max(0, vidaJugador - cantidad);
+    jugador.setVida(vidaJugador);
+    actualizarVidaVisual();
+
+    if(vidaJugador <= 0)
+    {
+        timer->stop();
+        juegoTerminado = true;
+        jugadorVisual->setPixmap(spriteMuerto.scaled(95, 75, Qt::KeepAspectRatio,
+                                                     Qt::SmoothTransformation));
+        jugadorVisual->setPos(jugador.getX(), jugador.getY());
+
+        QGraphicsTextItem* texto = escena->addText("SIN VIDA");
+        texto->setDefaultTextColor(Qt::red);
+        texto->setScale(3);
+        texto->setZValue(1001);
+        texto->setPos(jugador.getX() - 80, jugador.getY() - 120);
+    }
+}
+
+void EscenaJuego::curarJugador(int cantidad)
+{
+    if(juegoTerminado || cantidad <= 0) return;
+
+    vidaJugador = std::min(100, vidaJugador + cantidad);
+    jugador.setVida(vidaJugador);
+    actualizarVidaVisual();
+}
+
+void EscenaJuego::actualizarVidaVisual()
+{
+    if(!vidaVisual) return;
+
+    QPixmap estadoVida;
+
+    if(vidaJugador >= 100)
+        estadoVida = vidaFull;
+    else if(vidaJugador >= 75)
+        estadoVida = vidaUnoMenos;
+    else if(vidaJugador >= 50)
+        estadoVida = vidaMitad;
+    else if(vidaJugador >= 25)
+        estadoVida = vidaPoca;
+    else
+        estadoVida = vidaSin;
+
+    vidaVisual->setPixmap(estadoVida.scaled(115, 45, Qt::KeepAspectRatio,
+                                            Qt::SmoothTransformation));
+}
+
+void EscenaJuego::crearPiedras()
+{
+    QPixmap piedra1 = quitarFondoAzul(":/resources/piedra1.png");
+    QPixmap piedra2 = quitarFondoAzul(":/resources/piedra2.png");
+
+    if(piedra1.isNull()) piedra1.load(":/resources/piedra1.png");
+    if(piedra2.isNull()) piedra2.load(":/resources/piedra2.png");
+
+    spritesPiedras.push_back(piedra1.scaled(50, 50, Qt::KeepAspectRatio,
+                                            Qt::SmoothTransformation));
+    spritesPiedras.push_back(piedra2.scaled(55, 55, Qt::KeepAspectRatio,
+                                            Qt::SmoothTransformation));
+
+    for(int i = 0; i < CANTIDAD_PIEDRAS; i++)
+    {
+        QGraphicsPixmapItem* piedra = escena->addPixmap(spritesPiedras[i % spritesPiedras.size()]);
+        piedra->setZValue(12);
+        piedrasVisuales.push_back(piedra);
+        velocidadesPiedras.push_back(4.0f);
+        reiniciarPiedra(i);
+    }
+}
+
+void EscenaJuego::reiniciarPiedra(int indice)
+{
+    if(indice < 0 || indice >= static_cast<int>(piedrasVisuales.size())) return;
+
+    QRectF zonaVisible = mapToScene(viewport()->rect()).boundingRect();
+    if(zonaVisible.isEmpty())
+        zonaVisible = QRectF(0, 0, ANCHO_PANTALLA, ALTO_PANTALLA);
+
+    const int spriteIndice = QRandomGenerator::global()->bounded(
+        static_cast<int>(spritesPiedras.size()));
+    const int margenX = 60;
+    const int anchoZona = std::max(1, static_cast<int>(zonaVisible.width()) - margenX * 2);
+    const float x = zonaVisible.left() + margenX +
+                    QRandomGenerator::global()->bounded(anchoZona);
+    const float y = zonaVisible.top() -
+                    QRandomGenerator::global()->bounded(120, 520);
+
+    piedrasVisuales[indice]->setPixmap(spritesPiedras[spriteIndice]);
+    piedrasVisuales[indice]->setPos(x, y);
+    velocidadesPiedras[indice] = 3.0f + QRandomGenerator::global()->bounded(3);
+}
+
+void EscenaJuego::actualizarPiedras()
+{
+    QRectF zonaVisible = mapToScene(viewport()->rect()).boundingRect();
+    QRectF jugadorRect(jugador.getX(), jugador.getY(), 50, 50);
+
+    for(int i = 0; i < static_cast<int>(piedrasVisuales.size()); i++)
+    {
+        QGraphicsPixmapItem* piedra = piedrasVisuales[i];
+        piedra->setY(piedra->y() + velocidadesPiedras[i]);
+
+        if(piedra->sceneBoundingRect().intersects(jugadorRect))
+        {
+            recibirDanio(25);
+            reiniciarPiedra(i);
+            continue;
+        }
+
+        if(piedra->y() > zonaVisible.bottom() + 120)
+            reiniciarPiedra(i);
+    }
+}
+
+void EscenaJuego::crearAyuda()
+{
+    ayudaVisual = escena->addPixmap(spriteAyuda);
+    ayudaVisual->setZValue(13);
+    reiniciarAyuda();
+}
+
+void EscenaJuego::reiniciarAyuda()
+{
+    if(!ayudaVisual) return;
+
+    QRectF zonaVisible = mapToScene(viewport()->rect()).boundingRect();
+    if(zonaVisible.isEmpty())
+        zonaVisible = QRectF(0, 0, ANCHO_PANTALLA, ALTO_PANTALLA);
+
+    const int margenX = 70;
+    const int anchoZona = std::max(1, static_cast<int>(zonaVisible.width()) - margenX * 2);
+    const float x = zonaVisible.left() + margenX +
+                    QRandomGenerator::global()->bounded(anchoZona);
+    const float y = zonaVisible.top() -
+                    QRandomGenerator::global()->bounded(700, 1500);
+
+    ayudaVisual->setPos(x, y);
+    velocidadAyuda = 2.0f + QRandomGenerator::global()->bounded(3);
+}
+
+void EscenaJuego::actualizarAyuda()
+{
+    if(!ayudaVisual) return;
+
+    QRectF zonaVisible = mapToScene(viewport()->rect()).boundingRect();
+    QRectF jugadorRect(jugador.getX(), jugador.getY(), 50, 50);
+
+    ayudaVisual->setY(ayudaVisual->y() + velocidadAyuda);
+
+    if(ayudaVisual->sceneBoundingRect().intersects(jugadorRect))
+    {
+        curarJugador(25);
+        reiniciarAyuda();
+        return;
+    }
+
+    if(ayudaVisual->y() > zonaVisible.bottom() + 160)
+        reiniciarAyuda();
+}
+
+void EscenaJuego::actualizarHud()
+{
+    if(!vidaVisual) return;
+
+    QRectF zonaVisible = mapToScene(viewport()->rect()).boundingRect();
+    vidaVisual->setPos(zonaVisible.left() + 20, zonaVisible.top() + 20);
+}
+
 void EscenaJuego::actualizarJuego()
 {
+    if(juegoTerminado) return;
+
     gravedad.aplicar(&jugador);
     jugador.actualizar();
     jugador.setEnSuelo(false);
+
+    if(jugador.getVelocidadY() > 0 && !estabaCayendo)
+    {
+        estabaCayendo = true;
+        inicioCaidaY = jugador.getY();
+    }
 
     for(const Plataforma& p : plataformas)
     {
@@ -206,6 +477,19 @@ void EscenaJuego::actualizarJuego()
 
         if(colX && colY && jugador.getVelocidadY() >= 0)
         {
+            if(estabaCayendo)
+            {
+                const float distanciaCaida = p.getY() - inicioCaidaY;
+                if(distanciaCaida >= 700)
+                    recibirDanio(100);
+                else if(distanciaCaida >= 400)
+                    recibirDanio(50);
+                else if(distanciaCaida >= 200)
+                    recibirDanio(25);
+
+                estabaCayendo = false;
+            }
+
             jugador.setY(p.getY() - JH);
             jugador.setVelocidadY(0);
             jugador.setEnSuelo(true);
@@ -222,15 +506,26 @@ void EscenaJuego::actualizarJuego()
         const bool colY = jugador.getY() + JH > obs.getY() &&
                           jugador.getY()      < obs.getY() + obs.getAlto();
 
-        if(colX && colY) jugador.recibirDanio(obs.getDanio());
+        if(colX && colY) recibirDanio(obs.getDanio());
     }
+
+    actualizarPiedras();
+    actualizarAyuda();
 
     const QRectF limiteMundo = escena->sceneRect();
     jugador.setX(std::clamp(jugador.getX(), 0.0f,
                             static_cast<float>(limiteMundo.width() - 50)));
 
+    const float columnaEscaladaX = ANCHO_PANTALLA * (FONDOS_RUNNER - 1);
+    if(jugador.getX() >= columnaEscaladaX)
+    {
+        jugador.setX(std::clamp(jugador.getX(), columnaEscaladaX,
+                                columnaEscaladaX + ANCHO_PANTALLA - 50.0f));
+    }
+
     if(jugador.getY() > limiteMundo.bottom() - 50)
     {
+        recibirDanio(50);
         jugador.setY(limiteMundo.bottom() - 50);
         jugador.setVelocidadY(0);
         jugador.setEnSuelo(true);
@@ -242,19 +537,29 @@ void EscenaJuego::actualizarJuego()
         jugador.setVelocidadY(0);
     }
 
-    if(jugador.getVelocidadY() != 0)
+    if(juegoTerminado)
     {
-        spriteSaltar = QPixmap(":/resources/sprites.png").copy(120, 0, 64, 64);
-        jugadorVisual->setPixmap(spriteSaltar.scaled(70, 70));
+        actualizarHud();
+        return;
     }
-    else if(jugador.getVelocidadX() != 0)
+
+    if(jugador.getVelocidadY() < 0)
     {
-        spriteCorrer = QPixmap(":/resources/sprites.png").copy(0, 0, 64, 64);
-        jugadorVisual->setPixmap(spriteCorrer.scaled(70, 70));
+        const QPixmap& sprite = mirandoIzquierda ? spriteSaltarReves : spriteSaltar;
+        jugadorVisual->setPixmap(sprite.scaled(80, 80, Qt::KeepAspectRatio,
+                                               Qt::SmoothTransformation));
+    }
+    else if(jugador.getVelocidadY() > 0)
+    {
+        const QPixmap& sprite = mirandoIzquierda ? spriteCayendoReves : spriteCayendo;
+        jugadorVisual->setPixmap(sprite.scaled(85, 75, Qt::KeepAspectRatio,
+                                               Qt::SmoothTransformation));
     }
     else
     {
-        jugadorVisual->setPixmap(spriteQuieto.scaled(70, 70));
+        const QPixmap& sprite = mirandoIzquierda ? spriteQuietoReves : spriteQuieto;
+        jugadorVisual->setPixmap(sprite.scaled(80, 80, Qt::KeepAspectRatio,
+                                               Qt::SmoothTransformation));
     }
 
     jugadorVisual->setPos(jugador.getX(), jugador.getY());
@@ -271,6 +576,7 @@ void EscenaJuego::actualizarJuego()
         if(jugadorRect.intersects(meta->sceneBoundingRect()))
         {
             timer->stop();
+            juegoTerminado = true;
 
             QGraphicsTextItem* texto = escena->addText("NIVEL COMPLETADO");
             texto->setDefaultTextColor(Qt::yellow);
@@ -280,13 +586,42 @@ void EscenaJuego::actualizarJuego()
         }
     }
 
-    centerOn(jugador.getX() + 25, jugador.getY() + 25);
+    float camaraX = jugador.getX() + 25;
+    float camaraY = jugador.getY() + 25;
+
+    if(jugador.getX() >= columnaEscaladaX)
+    {
+        camaraX = columnaEscaladaX + ANCHO_PANTALLA / 2.0f;
+    }
+
+    if(jugador.getX() >= columnaEscaladaX && jugador.getY() < ALTO_PANTALLA)
+        camaraY = ALTO_PANTALLA / 2.0f;
+
+    camaraX = std::clamp(camaraX,
+                         ANCHO_PANTALLA / 2.0f,
+                         static_cast<float>(limiteMundo.width() - ANCHO_PANTALLA / 2.0f));
+    camaraY = std::clamp(camaraY,
+                         ALTO_PANTALLA / 2.0f,
+                         static_cast<float>(limiteMundo.height() - ALTO_PANTALLA / 2.0f));
+
+    centerOn(camaraX, camaraY);
+    actualizarHud();
 }
 
 void EscenaJuego::keyPressEvent(QKeyEvent *event)
 {
-    if(event->key() == Qt::Key_A)     jugador.setVelocidadX(-5);
-    if(event->key() == Qt::Key_D)     jugador.setVelocidadX(5);
+    if(event->key() == Qt::Key_A)
+    {
+        mirandoIzquierda = true;
+        jugador.setVelocidadX(-5);
+    }
+
+    if(event->key() == Qt::Key_D)
+    {
+        mirandoIzquierda = false;
+        jugador.setVelocidadX(5);
+    }
+
     if(event->key() == Qt::Key_Space) jugador.saltar();
 }
 
