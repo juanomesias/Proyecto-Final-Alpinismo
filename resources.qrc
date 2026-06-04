@@ -1,6 +1,10 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/fondo_menu.png</file>
+        <file>resources/fondo.png</file>
+        <file>resources/iniciojuego.png</file>
+        <file>resources/nfacil.png</file>
+        <file>resources/ndificil.png</file>
          <file>resources/fondo_nivel1_1.png</file>
          <file>resources/fondo_nivel1_2.png</file>
          <file>resources/fondo_nivel1_3.png</file>
@@ -22,6 +26,9 @@
         <file>resources/piedra2.png</file>
         <file>resources/piso.png</file>
         <file>resources/Muerto.png</file>
+        <file>resources/proteccion.png</file>
+        <file>resources/golpe.png</file>
+        <file>resources/golpescudo.png</file>
         <file>resources/vida.png</file>
         <file>resources/relojarena.png</file>
 

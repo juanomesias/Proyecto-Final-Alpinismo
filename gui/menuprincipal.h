@@ -2,9 +2,11 @@
 #define MENUPRINCIPAL_H
 
 #include <QMainWindow>
+#include <QString>
 
 class QPushButton;
 class QLabel;
+class QWidget;
 
 class MenuPrincipal : public QMainWindow
 {
@@ -14,12 +16,17 @@ public:
     explicit MenuPrincipal(QWidget *parent = nullptr);
 
 private:
-    QLabel *titulo;
+    QWidget *central;
     QPushButton *botonIniciar;
     QPushButton *botonFacil;
     QPushButton *botonDificil;
 
     int dificultad;
+
+    void mostrarInicio();
+    void mostrarSeleccionDificultad();
+    void iniciarJuego(int dificultadSeleccionada);
+    void prepararBotonImagen(QPushButton *boton, const QString& ruta, int ancho, int alto);
 };
 
 #endif

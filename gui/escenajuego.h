@@ -35,6 +35,8 @@ private:
     int   subEtapa;
     int   alturaEscalada;
     int   nivelActual;
+    int   dificultad;
+    int   danioRoca;
     float limiteNivel;
 
     QGraphicsPixmapItem* jugadorVisual;
@@ -59,6 +61,8 @@ private:
     void actualizarAyuda();
     void reiniciarAyuda();
     void curarJugador(int cantidad);
+    void recibirImpactoObjeto(int cantidad);
+    void mostrarImpacto(bool conEscudo);
     void crearCuraciones();
     void actualizarCuraciones();
     void activarPotenciador();
@@ -74,6 +78,9 @@ private:
     QPixmap spriteSaltarReves;
     QPixmap spriteCayendoReves;
     QPixmap spriteMuerto;
+    QPixmap spriteProteccion;
+    QPixmap spriteGolpe;
+    QPixmap spriteGolpeEscudo;
     QPixmap spritePlataformaNieve;
     QPixmap spritePiso;
     QPixmap spriteAyuda;
@@ -99,7 +106,10 @@ private:
     QGraphicsPixmapItem* relojVisual = nullptr;
     float velocidadAyuda = 2.5f;
     QElapsedTimer tiempoPotenciador;
+    QElapsedTimer tiempoImpacto;
     bool potenciadorActivo = false;
+    bool protegiendo = false;
+    int tipoImpacto = 0;
 
     QGraphicsRectItem*  meta       = nullptr;
     QGraphicsPixmapItem* vidaVisual = nullptr;
@@ -125,7 +135,7 @@ private:
     static const int NUM_FONDOS    = 10;
 
 public:
-    EscenaJuego(QWidget *parent = nullptr);
+    EscenaJuego(QWidget *parent = nullptr, int dificultad = 1);
     ~EscenaJuego();
 
     void actualizarJuego();

@@ -11,7 +11,7 @@ private:
     EscenaJuego* escena;
 
 public:
-    VentanaJuego(QWidget *parent = nullptr);
+    VentanaJuego(QWidget *parent = nullptr, int dificultad = 1);
 
     ~VentanaJuego();
 };

@@ -1,88 +1,120 @@
 #include "menuprincipal.h"
 #include "ventanajuego.h"
 
+#include <QHBoxLayout>
+#include <QIcon>
 #include <QPushButton>
-#include <QLabel>
+#include <QSize>
 #include <QVBoxLayout>
+#include <QWidget>
 
 MenuPrincipal::MenuPrincipal(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent),
+    central(new QWidget(this)),
+    botonIniciar(nullptr),
+    botonFacil(nullptr),
+    botonDificil(nullptr),
+    dificultad(1)
 {
-    QWidget *central = new QWidget;
     setCentralWidget(central);
+    setFixedSize(800, 600);
+    setWindowTitle("Alpinismo");
+
+    mostrarInicio();
+}
+
+void MenuPrincipal::prepararBotonImagen(QPushButton *boton, const QString& ruta, int ancho, int alto)
+{
+    boton->setIcon(QIcon(ruta));
+    boton->setIconSize(QSize(ancho, alto));
+    boton->setFixedSize(ancho, alto);
+    boton->setCursor(Qt::PointingHandCursor);
+    boton->setStyleSheet(
+        "QPushButton {"
+        "border: none;"
+        "background: transparent;"
+        "}"
+        "QPushButton:hover {"
+        "padding-top: 2px;"
+        "}"
+    );
+}
+
+void MenuPrincipal::mostrarInicio()
+{
+    delete botonFacil;
+    delete botonDificil;
+    botonFacil = nullptr;
+    botonDificil = nullptr;
+    delete central->layout();
 
     central->setStyleSheet(
         "QWidget {"
         "background-image: url(:/resources/fondo_menu.png);"
         "background-position: center;"
+        "background-repeat: no-repeat;"
         "}"
-        );
+    );
 
-    titulo = new QLabel("ALPINISMO");
-
-    titulo->setStyleSheet(
-        "font-size: 40px;"
-        "font-weight: bold;"
-        "color: white;"
-        );
-
-    titulo->setAlignment(Qt::AlignCenter);
-
-    botonIniciar = new QPushButton("INICIAR JUEGO");
-
-    botonFacil = new QPushButton("FACIL");
-
-    botonDificil = new QPushButton("DIFICIL");
-
-    botonIniciar->setStyleSheet(
-        "font-size: 20px;"
-        "padding: 10px;"
-        );
-
-    botonFacil->setStyleSheet(
-        "font-size: 18px;"
-        "padding: 8px;"
-        );
-
-    botonDificil->setStyleSheet(
-        "font-size: 18px;"
-        "padding: 8px;"
-        );
+    botonIniciar = new QPushButton(central);
+    prepararBotonImagen(botonIniciar, ":/resources/iniciojuego.png", 280, 115);
 
     QVBoxLayout *layout = new QVBoxLayout;
-
     layout->addStretch();
-    layout->addWidget(titulo);
-    layout->addSpacing(30);
-    layout->addWidget(botonFacil);
-    layout->addWidget(botonDificil);
-    layout->addWidget(botonIniciar);
+    layout->addWidget(botonIniciar, 0, Qt::AlignCenter);
+    layout->addSpacing(55);
     layout->addStretch();
-
     central->setLayout(layout);
 
-    dificultad = 1;
+    connect(botonIniciar, &QPushButton::clicked,
+            this, &MenuPrincipal::mostrarSeleccionDificultad);
+}
+
+void MenuPrincipal::mostrarSeleccionDificultad()
+{
+    delete botonIniciar;
+    botonIniciar = nullptr;
+    delete central->layout();
+
+    central->setStyleSheet(
+        "QWidget {"
+        "background-image: url(:/resources/fondo.png);"
+        "background-position: center;"
+        "background-repeat: no-repeat;"
+        "}"
+    );
+
+    botonFacil = new QPushButton(central);
+    botonDificil = new QPushButton(central);
+    prepararBotonImagen(botonFacil, ":/resources/nfacil.png", 220, 82);
+    prepararBotonImagen(botonDificil, ":/resources/ndificil.png", 220, 82);
+
+    QVBoxLayout *botones = new QVBoxLayout;
+    botones->addStretch();
+    botones->addWidget(botonFacil, 0, Qt::AlignCenter);
+    botones->addSpacing(18);
+    botones->addWidget(botonDificil, 0, Qt::AlignCenter);
+    botones->addStretch();
+
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->addStretch(3);
+    layout->addLayout(botones, 1);
+    layout->addSpacing(65);
+    central->setLayout(layout);
 
     connect(botonFacil, &QPushButton::clicked,
-            [=](){
-                dificultad = 1;
-            });
+            [=](){ iniciarJuego(1); });
 
     connect(botonDificil, &QPushButton::clicked,
-            [=](){
-                dificultad = 2;
-            });
+            [=](){ iniciarJuego(2); });
+}
 
-    connect(botonIniciar, &QPushButton::clicked,
-            [=](){
+void MenuPrincipal::iniciarJuego(int dificultadSeleccionada)
+{
+    dificultad = dificultadSeleccionada;
 
-                VentanaJuego *juego =
-                    new VentanaJuego();
+    VentanaJuego *juego = new VentanaJuego(nullptr, dificultad);
+    juego->show();
 
-                juego->show();
-
-                this->close();
-            });
-
-    resize(800, 600);
+    close();
 }

@@ -56,8 +56,10 @@ static QPixmap quitarFondoNegro(const QPixmap& pixmap)
     return QPixmap::fromImage(imagen);
 }
 
-EscenaJuego::EscenaJuego(QWidget *parent)
+EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
     : QGraphicsView(parent),
+    dificultad(dificultad),
+    danioRoca(dificultad == 2 ? 50 : 25),
     jugador(100, 100),
     gravedad(0.5f)
 {
@@ -123,6 +125,9 @@ EscenaJuego::EscenaJuego(QWidget *parent)
     spriteSaltarReves = quitarFondoNegro(hojaSpritesReves.copy(560, 80, 330, 400));
     spriteCayendoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 520, 420, 275));
     spriteMuerto = quitarFondoNegro(QPixmap(":/resources/Muerto.png"));
+    spriteProteccion = quitarFondoNegro(QPixmap(":/resources/proteccion.png"));
+    spriteGolpe = quitarFondoNegro(QPixmap(":/resources/golpe.png"));
+    spriteGolpeEscudo = quitarFondoNegro(QPixmap(":/resources/golpescudo.png"));
     spriteAyuda = quitarFondoNegro(QPixmap(":/resources/vida.png")).scaled(
         82, 82, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePlataformaNieve = quitarFondoNegro(hojaSprites.copy(440, 375, 390, 180));
@@ -320,6 +325,24 @@ void EscenaJuego::curarJugador(int cantidad)
     actualizarVidaVisual();
 }
 
+void EscenaJuego::mostrarImpacto(bool conEscudo)
+{
+    tipoImpacto = conEscudo ? 2 : 1;
+    tiempoImpacto.restart();
+}
+
+void EscenaJuego::recibirImpactoObjeto(int cantidad)
+{
+    if(protegiendo)
+    {
+        mostrarImpacto(true);
+        return;
+    }
+
+    mostrarImpacto(false);
+    recibirDanio(cantidad);
+}
+
 void EscenaJuego::cargarSpritesReloj()
 {
     QPixmap hojaReloj(":/resources/relojarena.png");
@@ -341,8 +364,8 @@ void EscenaJuego::crearCuraciones()
     if(spriteCuracion.isNull() || plataformas.empty()) return;
 
     const std::vector<int> indices = {
-        std::min(4, static_cast<int>(plataformas.size()) - 1),
-        std::max(0, static_cast<int>(plataformas.size()) - 8)
+        std::min(14, static_cast<int>(plataformas.size()) - 1),
+        std::min(44, static_cast<int>(plataformas.size()) - 1)
     };
 
     for(int indice : indices)
@@ -499,7 +522,7 @@ void EscenaJuego::actualizarPiedras()
 
         if(piedra->sceneBoundingRect().intersects(jugadorRect))
         {
-            recibirDanio(25);
+            recibirImpactoObjeto(danioRoca);
             reiniciarPiedra(i);
             continue;
         }
@@ -621,7 +644,7 @@ void EscenaJuego::actualizarJuego()
         const bool colY = jugador.getY() + JH > obs.getY() &&
                           jugador.getY()      < obs.getY() + obs.getAlto();
 
-        if(colX && colY) recibirDanio(obs.getDanio());
+        if(colX && colY) recibirImpactoObjeto(obs.getDanio());
     }
 
     actualizarPiedras();
@@ -660,19 +683,48 @@ void EscenaJuego::actualizarJuego()
         return;
     }
 
-    if(jugador.getVelocidadY() < 0)
+    bool spriteEspecialActivo = false;
+
+    if(tipoImpacto != 0)
+    {
+        if(tiempoImpacto.elapsed() >= 350)
+        {
+            tipoImpacto = 0;
+        }
+        else if(tipoImpacto == 2 && !spriteGolpeEscudo.isNull())
+        {
+            jugadorVisual->setPixmap(spriteGolpeEscudo.scaled(100, 100, Qt::KeepAspectRatio,
+                                                              Qt::SmoothTransformation));
+            spriteEspecialActivo = true;
+        }
+        else if(tipoImpacto == 1 && !spriteGolpe.isNull())
+        {
+            jugadorVisual->setPixmap(spriteGolpe.scaled(95, 95, Qt::KeepAspectRatio,
+                                                        Qt::SmoothTransformation));
+            spriteEspecialActivo = true;
+        }
+    }
+
+    if(!spriteEspecialActivo && protegiendo && !spriteProteccion.isNull())
+    {
+        jugadorVisual->setPixmap(spriteProteccion.scaled(100, 100, Qt::KeepAspectRatio,
+                                                         Qt::SmoothTransformation));
+        spriteEspecialActivo = true;
+    }
+
+    if(!spriteEspecialActivo && jugador.getVelocidadY() < 0)
     {
         const QPixmap& sprite = mirandoIzquierda ? spriteSaltarReves : spriteSaltar;
         jugadorVisual->setPixmap(sprite.scaled(80, 80, Qt::KeepAspectRatio,
                                                Qt::SmoothTransformation));
     }
-    else if(jugador.getVelocidadY() > 0)
+    else if(!spriteEspecialActivo && jugador.getVelocidadY() > 0)
     {
         const QPixmap& sprite = mirandoIzquierda ? spriteCayendoReves : spriteCayendo;
         jugadorVisual->setPixmap(sprite.scaled(85, 75, Qt::KeepAspectRatio,
                                                Qt::SmoothTransformation));
     }
-    else
+    else if(!spriteEspecialActivo)
     {
         const QPixmap& sprite = mirandoIzquierda ? spriteQuietoReves : spriteQuieto;
         jugadorVisual->setPixmap(sprite.scaled(80, 80, Qt::KeepAspectRatio,
@@ -739,6 +791,11 @@ void EscenaJuego::keyPressEvent(QKeyEvent *event)
         jugador.setVelocidadX(jugador.getVelocidadActual());
     }
 
+    if(event->key() == Qt::Key_S)
+    {
+        protegiendo = true;
+    }
+
     if(event->key() == Qt::Key_Space) jugador.saltar();
 }
 
@@ -746,4 +803,7 @@ void EscenaJuego::keyReleaseEvent(QKeyEvent *event)
 {
     if(event->key() == Qt::Key_A || event->key() == Qt::Key_D)
         jugador.setVelocidadX(0);
+
+    if(event->key() == Qt::Key_S)
+        protegiendo = false;
 }
