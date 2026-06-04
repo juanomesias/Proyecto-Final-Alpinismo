@@ -45,7 +45,4 @@ HEADERS += \
     gui/ventanajuego.h \
     gui/escenajuego.h
 
-HEADERS += \
-        gui/ventanajuego.h
-
-    RESOURCES += resources.qrc
+RESOURCES += resources.qrc

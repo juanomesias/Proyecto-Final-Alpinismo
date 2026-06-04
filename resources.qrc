@@ -1,39 +1,4 @@
 <RCC>
     <qresource prefix="/">
-        <file>resources/fondo_menu.png</file>
-        <file>resources/fondo.png</file>
-        <file>resources/iniciojuego.png</file>
-        <file>resources/nfacil.png</file>
-        <file>resources/ndificil.png</file>
-         <file>resources/fondo_nivel1_1.png</file>
-         <file>resources/fondo_nivel1_2.png</file>
-         <file>resources/fondo_nivel1_3.png</file>
-         <file>resources/fondo_nivel1_4.png</file>
-         <file>resources/fondo_nivel1_5.png</file>
-         <file>resources/fondo_nivel1_6.png</file>
-         <file>resources/fondo_nivel1_7.png</file>
-         <file>resources/fondo_nivel1_8.png</file>
-         <file>resources/fondo_nivel1_9.png</file>
-         <file>resources/fondo_nivel1_10.png</file>
-         <file>resources/fondo_nivel1_11.png</file>
-        <file>resources/Final1.png</file>
-        <file>resources/fullvida.png</file>
-        <file>resources/unomenos.png</file>
-        <file>resources/mitadvida.png</file>
-        <file>resources/pocavida.png</file>
-        <file>resources/sinvida.png</file>
-        <file>resources/piedra1.png</file>
-        <file>resources/piedra2.png</file>
-        <file>resources/piso.png</file>
-        <file>resources/Muerto.png</file>
-        <file>resources/proteccion.png</file>
-        <file>resources/golpe.png</file>
-        <file>resources/golpescudo.png</file>
-        <file>resources/vida.png</file>
-        <file>resources/relojarena.png</file>
-
-       
-        <file>resources/sprites.png</file>
-        <file>resources/spritesreves.png</file>
     </qresource>
 </RCC>

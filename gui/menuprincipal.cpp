@@ -1,12 +1,65 @@
 #include "menuprincipal.h"
 #include "ventanajuego.h"
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QAudioOutput>
+#include <QMediaPlayer>
 #include <QPushButton>
 #include <QSize>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QWidget>
+
+static const QString RUTA_RECURSOS = "D:/ProyectFinal/Proyecto-Final-Alpinismo/codigo/resources/";
+static QMediaPlayer* musicaNivel1 = nullptr;
+static QAudioOutput* salidaMusicaNivel1 = nullptr;
+
+static QString rutaRecurso(const QString& nombreArchivo)
+{
+    const QStringList carpetas = {
+        QCoreApplication::applicationDirPath() + "/resources",
+        QCoreApplication::applicationDirPath() + "/../resources",
+        QCoreApplication::applicationDirPath() + "/../../resources",
+        QCoreApplication::applicationDirPath() + "/../../../resources",
+        QDir::currentPath() + "/resources",
+        RUTA_RECURSOS
+    };
+
+    for(const QString& carpeta : carpetas)
+    {
+        const QString ruta = QDir(carpeta).filePath(nombreArchivo);
+        if(QFileInfo::exists(ruta))
+            return ruta;
+    }
+
+    return QDir(RUTA_RECURSOS).filePath(nombreArchivo);
+}
+
+void iniciarMusicaMenuNivel1()
+{
+    if(!musicaNivel1)
+    {
+        musicaNivel1 = new QMediaPlayer;
+        salidaMusicaNivel1 = new QAudioOutput;
+        musicaNivel1->setAudioOutput(salidaMusicaNivel1);
+        salidaMusicaNivel1->setVolume(0.25f);
+        musicaNivel1->setSource(QUrl::fromLocalFile(rutaRecurso("sounds/nivel1.mp3")));
+        musicaNivel1->setLoops(QMediaPlayer::Infinite);
+    }
+
+    if(musicaNivel1->playbackState() != QMediaPlayer::PlayingState)
+        musicaNivel1->play();
+}
+
+void detenerMusicaMenuNivel1()
+{
+    if(musicaNivel1)
+        musicaNivel1->stop();
+}
 
 MenuPrincipal::MenuPrincipal(QWidget *parent)
     : QMainWindow(parent),
@@ -20,6 +73,7 @@ MenuPrincipal::MenuPrincipal(QWidget *parent)
     setFixedSize(800, 600);
     setWindowTitle("Alpinismo");
 
+    iniciarMusicaMenuNivel1();
     mostrarInicio();
 }
 
@@ -50,14 +104,12 @@ void MenuPrincipal::mostrarInicio()
 
     central->setStyleSheet(
         "QWidget {"
-        "background-image: url(:/resources/fondo_menu.png);"
-        "background-position: center;"
-        "background-repeat: no-repeat;"
+        "border-image: url(" + rutaRecurso("fondo_menu.png") + ") 0 0 0 0 stretch stretch;"
         "}"
     );
 
     botonIniciar = new QPushButton(central);
-    prepararBotonImagen(botonIniciar, ":/resources/iniciojuego.png", 280, 115);
+    prepararBotonImagen(botonIniciar, rutaRecurso("iniciojuego.png"), 280, 115);
 
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addStretch();
@@ -78,16 +130,14 @@ void MenuPrincipal::mostrarSeleccionDificultad()
 
     central->setStyleSheet(
         "QWidget {"
-        "background-image: url(:/resources/fondo.png);"
-        "background-position: center;"
-        "background-repeat: no-repeat;"
+        "border-image: url(" + rutaRecurso("fondo.png") + ") 0 0 0 0 stretch stretch;"
         "}"
     );
 
     botonFacil = new QPushButton(central);
     botonDificil = new QPushButton(central);
-    prepararBotonImagen(botonFacil, ":/resources/nfacil.png", 220, 82);
-    prepararBotonImagen(botonDificil, ":/resources/ndificil.png", 220, 82);
+    prepararBotonImagen(botonFacil, rutaRecurso("nfacil.png"), 220, 82);
+    prepararBotonImagen(botonDificil, rutaRecurso("ndificil.png"), 220, 82);
 
     QVBoxLayout *botones = new QVBoxLayout;
     botones->addStretch();

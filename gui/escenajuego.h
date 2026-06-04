@@ -22,6 +22,8 @@
 #include "../fisica/efectofriccion.h"
 #include <vector>
 
+class QAudioOutput;
+class QMediaPlayer;
 
 class EscenaJuego : public QGraphicsView
 {
@@ -37,12 +39,14 @@ private:
     int   nivelActual;
     int   dificultad;
     int   danioRoca;
+    int   nivelJuego;
     float limiteNivel;
 
     QGraphicsPixmapItem* jugadorVisual;
 
     // Construye todo el mundo de una sola vez
     void construirMundo(int mundoAlto);
+    void construirNivel2();
     void cambiarFondoPorEtapa();
 
     // Métodos que siguen existiendo para no romper compilación
@@ -68,6 +72,12 @@ private:
     void activarPotenciador();
     void actualizarPotenciador();
     void cargarSpritesReloj();
+    void configurarAudio();
+    void reproducirMusicaNivel1();
+    void reproducirMusicaNivel2();
+    void reproducirSonidoDanio();
+    void reproducirSonidoMuerte();
+    void cambiarANivel2();
     void actualizarHud();
 
     QPixmap spriteQuieto;
@@ -81,8 +91,10 @@ private:
     QPixmap spriteProteccion;
     QPixmap spriteGolpe;
     QPixmap spriteGolpeEscudo;
+    QPixmap spritePortal;
     QPixmap spritePlataformaNieve;
     QPixmap spritePiso;
+    QPixmap spritePiso2;
     QPixmap spriteAyuda;
     QPixmap spriteCuracion;
     QTimer* timer;
@@ -111,7 +123,7 @@ private:
     bool protegiendo = false;
     int tipoImpacto = 0;
 
-    QGraphicsRectItem*  meta       = nullptr;
+    QGraphicsPixmapItem* meta       = nullptr;
     QGraphicsPixmapItem* vidaVisual = nullptr;
     QGraphicsTextItem*  textoVida;
     QPixmap vidaFull;
@@ -130,6 +142,13 @@ private:
     QGraphicsTextItem*  textoPuntaje;
     QGraphicsTextItem*  textoTiempo;
     int tiempoJuego;
+
+    QMediaPlayer* musica = nullptr;
+    QAudioOutput* salidaMusica = nullptr;
+    QMediaPlayer* sonidoDanio = nullptr;
+    QAudioOutput* salidaDanio = nullptr;
+    QMediaPlayer* sonidoMuerte = nullptr;
+    QAudioOutput* salidaMuerte = nullptr;
 
     static const int ALTO_PANTALLA = 600;
     static const int NUM_FONDOS    = 10;
