@@ -8,6 +8,7 @@
 #include <QGraphicsTextItem>
 #include <QTimer>
 #include <QKeyEvent>
+#include <QElapsedTimer>
 #include <QPixmap>
 #include <QString>
 #include <QVector>
@@ -58,6 +59,11 @@ private:
     void actualizarAyuda();
     void reiniciarAyuda();
     void curarJugador(int cantidad);
+    void crearCuraciones();
+    void actualizarCuraciones();
+    void activarPotenciador();
+    void actualizarPotenciador();
+    void cargarSpritesReloj();
     void actualizarHud();
 
     QPixmap spriteQuieto;
@@ -71,6 +77,7 @@ private:
     QPixmap spritePlataformaNieve;
     QPixmap spritePiso;
     QPixmap spriteAyuda;
+    QPixmap spriteCuracion;
     QTimer* timer;
 
     Jugador              jugador;
@@ -86,8 +93,13 @@ private:
     std::vector<QGraphicsPixmapItem*>  piedrasVisuales;
     std::vector<float>                 velocidadesPiedras;
     std::vector<QPixmap>               spritesPiedras;
+    std::vector<QGraphicsPixmapItem*>  curacionesVisuales;
+    std::vector<QPixmap>               spritesReloj;
     QGraphicsPixmapItem* ayudaVisual = nullptr;
+    QGraphicsPixmapItem* relojVisual = nullptr;
     float velocidadAyuda = 2.5f;
+    QElapsedTimer tiempoPotenciador;
+    bool potenciadorActivo = false;
 
     QGraphicsRectItem*  meta       = nullptr;
     QGraphicsPixmapItem* vidaVisual = nullptr;

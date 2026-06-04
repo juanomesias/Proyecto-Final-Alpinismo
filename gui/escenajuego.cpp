@@ -124,8 +124,10 @@ EscenaJuego::EscenaJuego(QWidget *parent)
     spriteCayendoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 520, 420, 275));
     spriteMuerto = quitarFondoNegro(QPixmap(":/resources/Muerto.png"));
     spriteAyuda = quitarFondoNegro(QPixmap(":/resources/vida.png")).scaled(
-        55, 55, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        82, 82, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePlataformaNieve = quitarFondoNegro(hojaSprites.copy(440, 375, 390, 180));
+    spriteCuracion = quitarFondoNegro(hojaSprites.copy(905, 380, 145, 190)).scaled(
+        52, 52, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePiso.load(":/resources/piso.png");
 
     jugadorVisual = escena->addPixmap(spriteQuieto.scaled(80, 80, Qt::KeepAspectRatio,
@@ -136,6 +138,7 @@ EscenaJuego::EscenaJuego(QWidget *parent)
     jugador.setY(pisoBaseY + 450);
 
     construirMundo(mundoAlto);
+    crearCuraciones();
 
     vidaFull.load(":/resources/fullvida.png");
     vidaUnoMenos.load(":/resources/unomenos.png");
@@ -146,6 +149,14 @@ EscenaJuego::EscenaJuego(QWidget *parent)
     vidaVisual = escena->addPixmap(vidaFull.scaled(115, 45, Qt::KeepAspectRatio,
                                                    Qt::SmoothTransformation));
     vidaVisual->setZValue(1000);
+
+    cargarSpritesReloj();
+    if(!spritesReloj.empty())
+    {
+        relojVisual = escena->addPixmap(spritesReloj.front());
+        relojVisual->setZValue(1000);
+        relojVisual->setVisible(false);
+    }
 
     crearPiedras();
     crearAyuda();
@@ -309,6 +320,107 @@ void EscenaJuego::curarJugador(int cantidad)
     actualizarVidaVisual();
 }
 
+void EscenaJuego::cargarSpritesReloj()
+{
+    QPixmap hojaReloj(":/resources/relojarena.png");
+    if(hojaReloj.isNull()) return;
+
+    const int cantidadSprites = 5;
+    const int anchoSprite = hojaReloj.width() / cantidadSprites;
+
+    for(int i = 0; i < cantidadSprites; i++)
+    {
+        QPixmap frame = hojaReloj.copy(i * anchoSprite, 230, anchoSprite, 520);
+        spritesReloj.push_back(quitarFondoNegro(frame).scaled(
+            58, 78, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
+}
+
+void EscenaJuego::crearCuraciones()
+{
+    if(spriteCuracion.isNull() || plataformas.empty()) return;
+
+    const std::vector<int> indices = {
+        std::min(4, static_cast<int>(plataformas.size()) - 1),
+        std::max(0, static_cast<int>(plataformas.size()) - 8)
+    };
+
+    for(int indice : indices)
+    {
+        const Plataforma& plataforma = plataformas[indice];
+        QGraphicsPixmapItem* curacion = escena->addPixmap(spriteCuracion);
+        curacion->setPos(
+            plataforma.getX() + plataforma.getAncho() / 2.0f - spriteCuracion.width() / 2.0f,
+            plataforma.getY() - spriteCuracion.height() - 8.0f
+        );
+        curacion->setZValue(14);
+        curacionesVisuales.push_back(curacion);
+    }
+}
+
+void EscenaJuego::actualizarCuraciones()
+{
+    QRectF jugadorRect(jugador.getX(), jugador.getY(), 50, 50);
+
+    for(QGraphicsPixmapItem* curacion : curacionesVisuales)
+    {
+        if(!curacion || !curacion->isVisible()) continue;
+
+        if(curacion->sceneBoundingRect().intersects(jugadorRect))
+        {
+            curarJugador(25);
+            curacion->setVisible(false);
+        }
+    }
+}
+
+void EscenaJuego::activarPotenciador()
+{
+    jugador.activarVelocidad();
+    if(jugador.getVelocidadX() < 0)
+        jugador.setVelocidadX(-jugador.getVelocidadActual());
+    else if(jugador.getVelocidadX() > 0)
+        jugador.setVelocidadX(jugador.getVelocidadActual());
+
+    potenciadorActivo = true;
+    tiempoPotenciador.restart();
+
+    if(relojVisual && !spritesReloj.empty())
+    {
+        relojVisual->setPixmap(spritesReloj.front());
+        relojVisual->setVisible(true);
+    }
+}
+
+void EscenaJuego::actualizarPotenciador()
+{
+    if(!potenciadorActivo) return;
+
+    const qint64 tiempoTranscurrido = tiempoPotenciador.elapsed();
+    const int indiceSprite = std::min(
+        static_cast<int>(spritesReloj.size()) - 1,
+        static_cast<int>(tiempoTranscurrido / 1000)
+    );
+
+    if(relojVisual && !spritesReloj.empty() && indiceSprite >= 0)
+        relojVisual->setPixmap(spritesReloj[indiceSprite]);
+
+    if(tiempoTranscurrido >= 5000)
+    {
+        const float velocidadAnterior = jugador.getVelocidadX();
+        jugador.desactivarVelocidad();
+        if(velocidadAnterior < 0)
+            jugador.setVelocidadX(-jugador.getVelocidadActual());
+        else if(velocidadAnterior > 0)
+            jugador.setVelocidadX(jugador.getVelocidadActual());
+
+        potenciadorActivo = false;
+
+        if(relojVisual)
+            relojVisual->setVisible(false);
+    }
+}
+
 void EscenaJuego::actualizarVidaVisual()
 {
     if(!vidaVisual) return;
@@ -417,10 +529,10 @@ void EscenaJuego::reiniciarAyuda()
     const float x = zonaVisible.left() + margenX +
                     QRandomGenerator::global()->bounded(anchoZona);
     const float y = zonaVisible.top() -
-                    QRandomGenerator::global()->bounded(700, 1500);
+                    QRandomGenerator::global()->bounded(300, 900);
 
     ayudaVisual->setPos(x, y);
-    velocidadAyuda = 2.0f + QRandomGenerator::global()->bounded(3);
+    velocidadAyuda = 2.5f + QRandomGenerator::global()->bounded(3);
 }
 
 void EscenaJuego::actualizarAyuda()
@@ -434,7 +546,7 @@ void EscenaJuego::actualizarAyuda()
 
     if(ayudaVisual->sceneBoundingRect().intersects(jugadorRect))
     {
-        curarJugador(25);
+        activarPotenciador();
         reiniciarAyuda();
         return;
     }
@@ -449,6 +561,9 @@ void EscenaJuego::actualizarHud()
 
     QRectF zonaVisible = mapToScene(viewport()->rect()).boundingRect();
     vidaVisual->setPos(zonaVisible.left() + 20, zonaVisible.top() + 20);
+
+    if(relojVisual)
+        relojVisual->setPos(zonaVisible.left() + 145, zonaVisible.top() + 14);
 }
 
 void EscenaJuego::actualizarJuego()
@@ -511,6 +626,8 @@ void EscenaJuego::actualizarJuego()
 
     actualizarPiedras();
     actualizarAyuda();
+    actualizarCuraciones();
+    actualizarPotenciador();
 
     const QRectF limiteMundo = escena->sceneRect();
     jugador.setX(std::clamp(jugador.getX(), 0.0f,
@@ -613,13 +730,13 @@ void EscenaJuego::keyPressEvent(QKeyEvent *event)
     if(event->key() == Qt::Key_A)
     {
         mirandoIzquierda = true;
-        jugador.setVelocidadX(-5);
+        jugador.setVelocidadX(-jugador.getVelocidadActual());
     }
 
     if(event->key() == Qt::Key_D)
     {
         mirandoIzquierda = false;
-        jugador.setVelocidadX(5);
+        jugador.setVelocidadX(jugador.getVelocidadActual());
     }
 
     if(event->key() == Qt::Key_Space) jugador.saltar();

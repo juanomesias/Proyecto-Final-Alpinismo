@@ -68,13 +68,15 @@ void Jugador::ganarExperiencia(int cantidad)
 void Jugador::activarVelocidad()
 {
     velocidadExtra = true;
-    velocidadActual = 8;
+    velocidadActual = 9;
+    fuerzaSalto = 14;
 }
 
 void Jugador::desactivarVelocidad()
 {
     velocidadExtra = false;
     velocidadActual = velocidadNormal;
+    fuerzaSalto = tieneArmadura ? 12 : 10;
 }
 
 int Jugador::getVida() const
