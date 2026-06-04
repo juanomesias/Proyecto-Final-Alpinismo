@@ -79,7 +79,20 @@ private:
     void reproducirSonidoMuerte();
     void cambiarANivel2();
     void actualizarHud();
+    void mostrarPantallaMuerte();
+    void reiniciarNivelActual();
+    void usarSpritesNivel1();
+    void usarSpritesNivel2();
 
+    QPixmap spriteNivel1Quieto;
+    QPixmap spriteNivel1Saltar;
+    QPixmap spriteNivel1Cayendo;
+    QPixmap spriteNivel1QuietoReves;
+    QPixmap spriteNivel1SaltarReves;
+    QPixmap spriteNivel1CayendoReves;
+    QPixmap spriteNivel2Quieto;
+    QPixmap spriteNivel2Saltar;
+    QPixmap spriteNivel2Cayendo;
     QPixmap spriteQuieto;
     QPixmap spriteCorrer;
     QPixmap spriteSaltar;
@@ -97,6 +110,10 @@ private:
     QPixmap spritePiso2;
     QPixmap spriteAyuda;
     QPixmap spriteCuracion;
+    QPixmap spriteWasted;
+    QPixmap spriteBotonRepetir;
+    QPixmap spriteBotonSalir;
+    QPixmap spritePortalGuia;
     QTimer* timer;
 
     Jugador              jugador;
@@ -116,6 +133,9 @@ private:
     std::vector<QPixmap>               spritesReloj;
     QGraphicsPixmapItem* ayudaVisual = nullptr;
     QGraphicsPixmapItem* relojVisual = nullptr;
+    QGraphicsPixmapItem* wastedVisual = nullptr;
+    QGraphicsPixmapItem* botonRepetirVisual = nullptr;
+    QGraphicsPixmapItem* botonSalirVisual = nullptr;
     float velocidadAyuda = 2.5f;
     QElapsedTimer tiempoPotenciador;
     QElapsedTimer tiempoImpacto;
@@ -163,6 +183,7 @@ public:
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
 };
 
 #endif

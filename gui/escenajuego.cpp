@@ -2,13 +2,17 @@
 
 #include <algorithm>
 #include <QAudioOutput>
+#include <QApplication>
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QMediaPlayer>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QRandomGenerator>
 #include <QUrl>
+#include <stdexcept>
 
 void detenerMusicaMenuNivel1();
 
@@ -44,6 +48,32 @@ static QString rutaRecurso(const QString& nombreArchivo)
 static QString rutaSonido(const QString& nombreArchivo)
 {
     return rutaRecurso("sounds/" + nombreArchivo);
+}
+
+static void exigirRecurso(const QString& nombreArchivo)
+{
+    const QString ruta = rutaRecurso(nombreArchivo);
+    if(!QFileInfo::exists(ruta))
+        throw std::runtime_error(("No se encontro el recurso: " + nombreArchivo).toStdString());
+}
+
+static void validarRecursosCriticos()
+{
+    const QStringList recursos = {
+        "sprites.png",
+        "spritesreves.png",
+        "sprites2.png",
+        "wasted.png",
+        "repetir.png",
+        "salir.png",
+        "sounds/nivel1.mp3",
+        "sounds/nivel2.mp3",
+        "sounds/golpe_danio.mp3",
+        "sounds/muerte.mp3"
+    };
+
+    for(const QString& recurso : recursos)
+        exigirRecurso(recurso);
 }
 
 static QPixmap quitarFondoAzul(const QString& ruta)
@@ -98,6 +128,15 @@ EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
     jugador(100, 100),
     gravedad(0.5f)
 {
+    try
+    {
+        validarRecursosCriticos();
+    }
+    catch(const std::exception& error)
+    {
+        qWarning() << error.what();
+    }
+
     escena = new QGraphicsScene(this);
     setScene(escena);
     etapa    = 1;
@@ -155,18 +194,24 @@ EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
     QPixmap hojaSprites(rutaRecurso("sprites.png"));
     QPixmap hojaSpritesReves(rutaRecurso("spritesreves.png"));
     QPixmap hojaSprites2(rutaRecurso("sprites2.png"));
-    spriteQuieto = quitarFondoNegro(hojaSprites.copy(45, 45, 260, 280));
-    spriteSaltar = quitarFondoNegro(hojaSprites.copy(330, 45, 260, 290));
-    spriteCayendo = quitarFondoNegro(hojaSprites.copy(55, 340, 300, 230));
-    spriteQuietoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 85, 320, 380));
-    spriteSaltarReves = quitarFondoNegro(hojaSpritesReves.copy(560, 80, 330, 400));
-    spriteCayendoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 520, 420, 275));
+    spriteNivel1Quieto = quitarFondoNegro(hojaSprites.copy(45, 45, 260, 280));
+    spriteNivel1Saltar = quitarFondoNegro(hojaSprites.copy(330, 45, 260, 290));
+    spriteNivel1Cayendo = quitarFondoNegro(hojaSprites.copy(55, 340, 300, 230));
+    spriteNivel1QuietoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 85, 320, 380));
+    spriteNivel1SaltarReves = quitarFondoNegro(hojaSpritesReves.copy(560, 80, 330, 400));
+    spriteNivel1CayendoReves = quitarFondoNegro(hojaSpritesReves.copy(110, 520, 420, 275));
+    spriteNivel2Quieto = quitarFondoNegro(hojaSprites2.copy(85, 95, 330, 345));
+    spriteNivel2Saltar = quitarFondoNegro(hojaSprites2.copy(470, 35, 315, 365));
+    spriteNivel2Cayendo = quitarFondoNegro(hojaSprites2.copy(760, 265, 490, 205));
+    usarSpritesNivel1();
     spriteMuerto = quitarFondoNegro(QPixmap(rutaRecurso("Muerto.png")));
     spriteProteccion = quitarFondoNegro(QPixmap(rutaRecurso("proteccion.png")));
     spriteGolpe = quitarFondoNegro(QPixmap(rutaRecurso("golpe.png")));
     spriteGolpeEscudo = quitarFondoNegro(QPixmap(rutaRecurso("golpescudo.png")));
     spritePortal = hojaSprites2.copy(1235, 430, 405, 385).scaled(
         150, 155, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    spritePortalGuia = quitarFondoNegro(hojaSprites2.copy(450, 505, 270, 335)).scaled(
+        92, 112, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spriteAyuda = quitarFondoNegro(QPixmap(rutaRecurso("vida.png"))).scaled(
         82, 82, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePlataformaNieve = quitarFondoNegro(hojaSprites.copy(440, 375, 390, 180));
@@ -174,6 +219,9 @@ EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
         52, 52, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePiso.load(rutaRecurso("piso.png"));
     spritePiso2.load(rutaRecurso("piso2.png"));
+    spriteWasted = QPixmap(rutaRecurso("wasted.png"));
+    spriteBotonRepetir = QPixmap(rutaRecurso("repetir.png"));
+    spriteBotonSalir = QPixmap(rutaRecurso("salir.png"));
 
     jugadorVisual = escena->addPixmap(spriteQuieto.scaled(80, 80, Qt::KeepAspectRatio,
                                                           Qt::SmoothTransformation));
@@ -246,6 +294,26 @@ void EscenaJuego::agregarPiso(float x, float yMundo, float ancho, float alto)
     plataformasVisuales.push_back(piso);
 }
 
+void EscenaJuego::usarSpritesNivel1()
+{
+    spriteQuieto = spriteNivel1Quieto;
+    spriteSaltar = spriteNivel1Saltar;
+    spriteCayendo = spriteNivel1Cayendo;
+    spriteQuietoReves = spriteNivel1QuietoReves;
+    spriteSaltarReves = spriteNivel1SaltarReves;
+    spriteCayendoReves = spriteNivel1CayendoReves;
+}
+
+void EscenaJuego::usarSpritesNivel2()
+{
+    spriteQuieto = spriteNivel2Quieto;
+    spriteSaltar = spriteNivel2Saltar;
+    spriteCayendo = spriteNivel2Cayendo;
+    spriteQuietoReves = spriteNivel2Quieto;
+    spriteSaltarReves = spriteNivel2Saltar;
+    spriteCayendoReves = spriteNivel2Cayendo;
+}
+
 void EscenaJuego::construirMundo(int mundoAlto)
 {
     const int pisoBaseY = mundoAlto - ALTO_PANTALLA;
@@ -301,6 +369,10 @@ void EscenaJuego::construirMundo(int mundoAlto)
     meta = escena->addPixmap(spritePortal);
     meta->setPos(columnaEscaladaX + 620, 415);
     meta->setZValue(8);
+
+    QGraphicsPixmapItem* guiaPortal = escena->addPixmap(spritePortalGuia);
+    guiaPortal->setPos(columnaEscaladaX + 500, 448);
+    guiaPortal->setZValue(9);
 }
 
 void EscenaJuego::limpiarPlataformas()
@@ -391,6 +463,7 @@ void EscenaJuego::reproducirSonidoMuerte()
 void EscenaJuego::construirNivel2()
 {
     escena->clear();
+    usarSpritesNivel2();
     fondosItems.clear();
     plataformas.clear();
     obstaculos.clear();
@@ -406,6 +479,9 @@ void EscenaJuego::construirNivel2()
     ayudaVisual = nullptr;
     relojVisual = nullptr;
     vidaVisual = nullptr;
+    wastedVisual = nullptr;
+    botonRepetirVisual = nullptr;
+    botonSalirVisual = nullptr;
 
     escena->setSceneRect(0, 0, ANCHO_PANTALLA * 3, ALTO_PANTALLA);
 
@@ -470,16 +546,47 @@ void EscenaJuego::recibirDanio(int cantidad)
         timer->stop();
         juegoTerminado = true;
         reproducirSonidoMuerte();
+        mostrarPantallaMuerte();
+    }
+}
+
+void EscenaJuego::mostrarPantallaMuerte()
+{
+    QRectF vista = mapToScene(viewport()->rect()).boundingRect();
+    const QPointF centro = vista.center();
+
+    if(jugadorVisual && !spriteMuerto.isNull())
+    {
         jugadorVisual->setPixmap(spriteMuerto.scaled(95, 75, Qt::KeepAspectRatio,
                                                      Qt::SmoothTransformation));
         jugadorVisual->setPos(jugador.getX(), jugador.getY());
-
-        QGraphicsTextItem* texto = escena->addText("SIN VIDA");
-        texto->setDefaultTextColor(Qt::red);
-        texto->setScale(3);
-        texto->setZValue(1001);
-        texto->setPos(jugador.getX() - 80, jugador.getY() - 120);
     }
+
+    if(!spriteWasted.isNull())
+    {
+        wastedVisual = escena->addPixmap(spriteWasted.scaled(
+            310, 170, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        wastedVisual->setPos(centro.x() - wastedVisual->boundingRect().width() / 2.0,
+                             centro.y() - 180);
+        wastedVisual->setZValue(2000);
+    }
+
+    const QPixmap repetir = spriteBotonRepetir.scaled(
+        180, 126, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const QPixmap salir = spriteBotonSalir.scaled(
+        180, 126, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const float espacio = 24.0f;
+    const float totalAncho = repetir.width() + salir.width() + espacio;
+    const float yBotones = centro.y() + 20;
+
+    botonRepetirVisual = escena->addPixmap(repetir);
+    botonRepetirVisual->setPos(centro.x() - totalAncho / 2.0, yBotones);
+    botonRepetirVisual->setZValue(2001);
+
+    botonSalirVisual = escena->addPixmap(salir);
+    botonSalirVisual->setPos(centro.x() - totalAncho / 2.0 + repetir.width() + espacio,
+                             yBotones);
+    botonSalirVisual->setZValue(2001);
 }
 
 void EscenaJuego::curarJugador(int cantidad)
@@ -489,6 +596,54 @@ void EscenaJuego::curarJugador(int cantidad)
     vidaJugador = std::min(100, vidaJugador + cantidad);
     jugador.setVida(vidaJugador);
     actualizarVidaVisual();
+}
+
+void EscenaJuego::reiniciarNivelActual()
+{
+    if(musica) musica->stop();
+
+    juegoTerminado = false;
+    vidaJugador = 100;
+    jugador.setVida(vidaJugador);
+    jugador.setVelocidadX(0);
+    jugador.setVelocidadY(0);
+    jugador.setEnSuelo(true);
+    protegiendo = false;
+    potenciadorActivo = false;
+    tipoImpacto = 0;
+    estabaCayendo = false;
+
+    if(nivelJuego == 2)
+    {
+        construirNivel2();
+        reproducirMusicaNivel2();
+    }
+    else
+    {
+        if(wastedVisual) escena->removeItem(wastedVisual);
+        if(botonRepetirVisual) escena->removeItem(botonRepetirVisual);
+        if(botonSalirVisual) escena->removeItem(botonSalirVisual);
+        delete wastedVisual;
+        delete botonRepetirVisual;
+        delete botonSalirVisual;
+        wastedVisual = nullptr;
+        botonRepetirVisual = nullptr;
+        botonSalirVisual = nullptr;
+
+        usarSpritesNivel1();
+        jugador.setX(100);
+        jugador.setY(escena->sceneRect().bottom() - 150);
+        if(jugadorVisual)
+        {
+            jugadorVisual->setPixmap(spriteQuieto.scaled(80, 80, Qt::KeepAspectRatio,
+                                                         Qt::SmoothTransformation));
+            jugadorVisual->setPos(jugador.getX(), jugador.getY());
+        }
+        actualizarVidaVisual();
+        centerOn(jugador.getX() + 25, jugador.getY() + 25);
+    }
+
+    if(timer) timer->start(16);
 }
 
 void EscenaJuego::mostrarImpacto(bool conEscudo)
@@ -981,4 +1136,25 @@ void EscenaJuego::keyReleaseEvent(QKeyEvent *event)
 
     if(event->key() == Qt::Key_S)
         protegiendo = false;
+}
+
+void EscenaJuego::mousePressEvent(QMouseEvent *event)
+{
+    const QPointF punto = mapToScene(event->pos());
+
+    if(juegoTerminado && botonRepetirVisual &&
+        botonRepetirVisual->sceneBoundingRect().contains(punto))
+    {
+        reiniciarNivelActual();
+        return;
+    }
+
+    if(juegoTerminado && botonSalirVisual &&
+        botonSalirVisual->sceneBoundingRect().contains(punto))
+    {
+        qApp->quit();
+        return;
+    }
+
+    QGraphicsView::mousePressEvent(event);
 }
