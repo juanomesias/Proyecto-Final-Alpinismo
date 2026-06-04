@@ -1,555 +1,297 @@
 #include "escenajuego.h"
 
+#include <algorithm>
+
+static const int ANCHO_PANTALLA = 800;
+static const int ALTO_PANTALLA  = 600;
+static const int NUM_FONDOS     = 11;
+static const int FONDOS_RUNNER  = 3;
+
 EscenaJuego::EscenaJuego(QWidget *parent)
     : QGraphicsView(parent),
-    jugador(100, 500),
+    jugador(100, 100),
     gravedad(0.5f)
 {
     escena = new QGraphicsScene(this);
     setScene(escena);
-    etapa = 1;
+    etapa    = 1;
     subEtapa = 1;
 
+    const int mundoAncho = ANCHO_PANTALLA * FONDOS_RUNNER;
+    const int mundoAlto  = ALTO_PANTALLA * (NUM_FONDOS - FONDOS_RUNNER + 1);
+    const int pisoBaseY  = mundoAlto - ALTO_PANTALLA;
 
-    QPixmap fondo(
-        ":/resources/fondo_nivel1_1.png"
-        );
+    escena->setSceneRect(0, 0, mundoAncho, mundoAlto);
 
-    fondo = fondo.scaled(
-        800,
-        600,
-        Qt::IgnoreAspectRatio,
-        Qt::SmoothTransformation
-        );
+    QStringList fondos = {
+        ":/resources/fondo_nivel1_1.png",
+        ":/resources/fondo_nivel1_2.png",
+        ":/resources/fondo_nivel1_3.png",
+        ":/resources/fondo_nivel1_4.png",
+        ":/resources/fondo_nivel1_5.png",
+        ":/resources/fondo_nivel1_6.png",
+        ":/resources/fondo_nivel1_7.png",
+        ":/resources/fondo_nivel1_8.png",
+        ":/resources/fondo_nivel1_9.png",
+        ":/resources/fondo_nivel1_10.png",
+        ":/resources/Final1.png"
+    };
 
-    fondoVisual =
-        escena->addPixmap(fondo);
-
-    fondoVisual->setPos(0,0);
-
-    fondoVisual->setZValue(-100);
-
-    fondo = fondo.scaled(
-        800,
-        600,
-        Qt::IgnoreAspectRatio,
-        Qt::SmoothTransformation
-        );
-
-    escena->setSceneRect(
-        0,
-        0,
-        800,
-        600
-        );
-
-    spriteQuieto.load(
-        ":/resources/sprites.png"
-        );
-
-    spriteQuieto =
-        spriteQuieto.copy(
-            0,
-            0,
-            64,
-            64
-            );
-
-    jugadorVisual =
-        escena->addPixmap(
-            spriteQuieto.scaled(
-                70,
-                70
-                )
-            );
-    plataformas.push_back(
-        Plataforma(0,550,800,50)
-        );
-
-    for(const Plataforma& plataforma : plataformas)
+    for(int i = 0; i < fondos.size(); i++)
     {
-        QGraphicsPixmapItem *roca =
-            escena->addPixmap(
-                QPixmap(":/resources/sprites.png")
-                    .copy(390,180,170,120)
-                    .scaled(
-                        plataforma.getAncho(),
-                        plataforma.getAlto()
-                        )
-                );
+        QPixmap px(fondos[i]);
+        if(px.isNull()) px = QPixmap(ANCHO_PANTALLA, ALTO_PANTALLA);
 
-        roca->setPos(
-            plataforma.getX(),
-            plataforma.getY()
-            );
+        px = px.scaled(ANCHO_PANTALLA, ALTO_PANTALLA,
+                       Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+        QGraphicsPixmapItem* item = escena->addPixmap(px);
+
+        if(i < FONDOS_RUNNER)
+        {
+            item->setPos(ANCHO_PANTALLA * i, pisoBaseY);
+        }
+        else
+        {
+            const int alturaEscalada = i - FONDOS_RUNNER + 1;
+            item->setPos(ANCHO_PANTALLA * (FONDOS_RUNNER - 1),
+                         pisoBaseY - ALTO_PANTALLA * alturaEscalada);
+        }
+
+        item->setZValue(-100);
+        fondosItems.push_back(item);
     }
 
+    spriteQuieto.load(":/resources/sprites.png");
+    spriteQuieto = spriteQuieto.copy(0, 0, 64, 64);
+    jugadorVisual = escena->addPixmap(spriteQuieto.scaled(70, 70));
+    jugadorVisual->setZValue(10);
+
+    jugador.setX(100);
+    jugador.setY(pisoBaseY + 450);
+
+    construirMundo(mundoAlto);
+
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setFixedSize(ANCHO_PANTALLA, ALTO_PANTALLA);
+
     timer = new QTimer(this);
-    connect(timer, &QTimer::timeout,
-            this, &EscenaJuego::actualizarJuego);
+    connect(timer, &QTimer::timeout, this, &EscenaJuego::actualizarJuego);
     timer->start(16);
 
     setFocus();
 }
 
-EscenaJuego::~EscenaJuego()
+EscenaJuego::~EscenaJuego() {}
+
+void EscenaJuego::agregarPlataforma(float x, float yMundo, float ancho, float alto)
 {
+    plataformas.push_back(Plataforma(x, yMundo, ancho, alto));
+
+    QPixmap spritePlataforma(":/resources/sprites.png");
+    QGraphicsPixmapItem* roca = escena->addPixmap(
+        spritePlataforma.copy(390, 180, 170, 120).scaled(ancho, alto));
+
+    roca->setPos(x, yMundo);
+    roca->setZValue(5);
+    plataformasVisuales.push_back(roca);
 }
+
+void EscenaJuego::construirMundo(int mundoAlto)
+{
+    const int pisoBaseY = mundoAlto - ALTO_PANTALLA;
+    const int columnaEscaladaX = ANCHO_PANTALLA * (FONDOS_RUNNER - 1);
+
+    auto YBase = [&](float yLocal) -> float
+    {
+        return pisoBaseY + yLocal;
+    };
+
+    auto YEscalada = [&](int fondo, float yLocal) -> float
+    {
+        return pisoBaseY - ALTO_PANTALLA * (fondo - FONDOS_RUNNER) + yLocal;
+    };
+
+    auto XEscalada = [&](float xLocal) -> float
+    {
+        return columnaEscaladaX + xLocal;
+    };
+
+    // Fondos 1, 2 y 3: recorrido horizontal.
+    agregarPlataforma(0, YBase(550), ANCHO_PANTALLA * FONDOS_RUNNER, 50);
+
+    // Fondo 3: primeras plataformas para empezar a subir.
+    agregarPlataforma(XEscalada(590), YBase(450), 130, 25);
+    agregarPlataforma(XEscalada(410), YBase(350), 130, 25);
+    agregarPlataforma(XEscalada(230), YBase(250), 130, 25);
+    agregarPlataforma(XEscalada(80),  YBase(150), 130, 25);
+    agregarPlataforma(XEscalada(360), YBase(50),  130, 25);
+
+    // Desde aqui cada fondo queda encima del anterior.
+    for(int fondo = 4; fondo <= 10; fondo++)
+    {
+        const bool derecha = (fondo % 2 == 0);
+
+        agregarPlataforma(XEscalada(derecha ? 120 : 550), YEscalada(fondo, 550), 140, 25);
+        agregarPlataforma(XEscalada(derecha ? 340 : 330), YEscalada(fondo, 450), 140, 25);
+        agregarPlataforma(XEscalada(derecha ? 560 : 110), YEscalada(fondo, 350), 140, 25);
+        agregarPlataforma(XEscalada(derecha ? 360 : 350), YEscalada(fondo, 250), 140, 25);
+        agregarPlataforma(XEscalada(derecha ? 130 : 560), YEscalada(fondo, 150), 140, 25);
+        agregarPlataforma(XEscalada(derecha ? 430 : 250), YEscalada(fondo, 50),  140, 25);
+    }
+
+    // Fondo final.
+    agregarPlataforma(XEscalada(170), YEscalada(11, 550), 170, 25);
+    agregarPlataforma(XEscalada(420), YEscalada(11, 410), 170, 25);
+    agregarPlataforma(XEscalada(300), YEscalada(11, 260), 200, 25);
+    agregarPlataforma(XEscalada(470), YEscalada(11, 120), 170, 25);
+
+    meta = escena->addRect(
+        XEscalada(520),
+        YEscalada(11, 85),
+        70,
+        70,
+        QPen(Qt::yellow),
+        QBrush(Qt::yellow)
+    );
+
+    meta->setZValue(8);
+}
+
+void EscenaJuego::limpiarPlataformas()
+{
+    for(QGraphicsPixmapItem* v : plataformasVisuales)
+    {
+        escena->removeItem(v);
+        delete v;
+    }
+
+    plataformasVisuales.clear();
+    plataformas.clear();
+}
+
+void EscenaJuego::limpiarObstaculos()
+{
+    for(QGraphicsRectItem* v : obstaculosVisuales)
+    {
+        escena->removeItem(v);
+        delete v;
+    }
+
+    obstaculosVisuales.clear();
+    obstaculos.clear();
+}
+
+void EscenaJuego::cargarNivel(int, float) {}
+void EscenaJuego::cambiarNivel() {}
+void EscenaJuego::cambiarFondoPorEtapa() {}
+void EscenaJuego::cargarEscalada(int) {}
 
 void EscenaJuego::actualizarJuego()
 {
     gravedad.aplicar(&jugador);
     jugador.actualizar();
-
     jugador.setEnSuelo(false);
 
-    for(const Plataforma& plataforma : plataformas)
+    for(const Plataforma& p : plataformas)
     {
-        float jugadorX = jugador.getX();
-        float jugadorY = jugador.getY();
-        float jugadorAncho = 50;
-        float jugadorAlto = 50;
-        bool colisionX =
-            jugadorX + jugadorAncho > plataforma.getX() &&
-            jugadorX < plataforma.getX() + plataforma.getAncho();
-        bool colisionY =
-            jugadorY + jugadorAlto >= plataforma.getY() &&
-            jugadorY + jugadorAlto <= plataforma.getY() + plataforma.getAlto();
+        float jx = jugador.getX();
+        float jy = jugador.getY();
+        const float JW = 50;
+        const float JH = 50;
 
-        if(colisionX &&
-            colisionY &&
-            jugador.getVelocidadY() >= 0)
+        const bool colX = jx + JW > p.getX() && jx < p.getX() + p.getAncho();
+        const bool colY = jy + JH >= p.getY() && jy + JH <= p.getY() + p.getAlto();
+
+        if(colX && colY && jugador.getVelocidadY() >= 0)
         {
-            jugador.setY(
-                plataforma.getY() - jugadorAlto
-                );
+            jugador.setY(p.getY() - JH);
             jugador.setVelocidadY(0);
             jugador.setEnSuelo(true);
         }
     }
 
-    for(const Obstaculo& obstaculo : obstaculos)
+    for(const Obstaculo& obs : obstaculos)
     {
-        float jugadorAncho = 50;
-        float jugadorAlto = 50;
-        bool colisionX =
-            jugador.getX() + jugadorAncho > obstaculo.getX() &&
-            jugador.getX() < obstaculo.getX() + obstaculo.getAncho();
-        bool colisionY =
-            jugador.getY() + jugadorAlto > obstaculo.getY() &&
-            jugador.getY() < obstaculo.getY() + obstaculo.getAlto();
+        const float JW = 50;
+        const float JH = 50;
 
-        if(colisionX && colisionY)
-        {
-            jugador.recibirDanio(
-                obstaculo.getDanio()
-                );
-        }
+        const bool colX = jugador.getX() + JW > obs.getX() &&
+                          jugador.getX()      < obs.getX() + obs.getAncho();
+        const bool colY = jugador.getY() + JH > obs.getY() &&
+                          jugador.getY()      < obs.getY() + obs.getAlto();
+
+        if(colX && colY) jugador.recibirDanio(obs.getDanio());
+    }
+
+    const QRectF limiteMundo = escena->sceneRect();
+    jugador.setX(std::clamp(jugador.getX(), 0.0f,
+                            static_cast<float>(limiteMundo.width() - 50)));
+
+    if(jugador.getY() > limiteMundo.bottom() - 50)
+    {
+        jugador.setY(limiteMundo.bottom() - 50);
+        jugador.setVelocidadY(0);
+        jugador.setEnSuelo(true);
+    }
+
+    if(jugador.getY() < limiteMundo.top())
+    {
+        jugador.setY(limiteMundo.top());
+        jugador.setVelocidadY(0);
     }
 
     if(jugador.getVelocidadY() != 0)
     {
-        spriteSaltar =
-            QPixmap(":/resources/sprites.png")
-                .copy(120,0,64,64);
-
-        jugadorVisual->setPixmap(
-            spriteSaltar.scaled(70,70)
-            );
+        spriteSaltar = QPixmap(":/resources/sprites.png").copy(120, 0, 64, 64);
+        jugadorVisual->setPixmap(spriteSaltar.scaled(70, 70));
     }
     else if(jugador.getVelocidadX() != 0)
     {
-        spriteCorrer =
-            QPixmap(":/resources/sprites.png")
-                .copy(0,0,64,64);
-
-        jugadorVisual->setPixmap(
-            spriteCorrer.scaled(70,70)
-            );
+        spriteCorrer = QPixmap(":/resources/sprites.png").copy(0, 0, 64, 64);
+        jugadorVisual->setPixmap(spriteCorrer.scaled(70, 70));
     }
     else
     {
-        jugadorVisual->setPixmap(
-            spriteQuieto.scaled(70,70)
-            );
+        jugadorVisual->setPixmap(spriteQuieto.scaled(70, 70));
     }
 
-    jugadorVisual->setPos(
-        jugador.getX(),
-        jugador.getY()
-        );
+    jugadorVisual->setPos(jugador.getX(), jugador.getY());
 
     for(size_t i = 0; i < obstaculos.size(); i++)
     {
-        obstaculosVisuales[i]->setPos(
-            obstaculos[i].getX(),
-            obstaculos[i].getY()
-            );
+        obstaculosVisuales[i]->setPos(obstaculos[i].getX(), obstaculos[i].getY());
     }
 
-    if(
-        jugador.getX() > 750 &&
-        etapa == 1
-        )
+    if(meta)
     {
-        etapa = 2;
+        QRectF jugadorRect(jugador.getX(), jugador.getY(), 50, 50);
 
-        jugador.setX(50);
+        if(jugadorRect.intersects(meta->sceneBoundingRect()))
+        {
+            timer->stop();
 
-        fondoVisual->setPixmap(
-            QPixmap(
-                ":/resources/fondo_nivel1_2.png"
-                ).scaled(
-                    800,
-                    600
-                    )
-            );
+            QGraphicsTextItem* texto = escena->addText("NIVEL COMPLETADO");
+            texto->setDefaultTextColor(Qt::yellow);
+            texto->setScale(3);
+            texto->setPos(jugador.getX() - 120, jugador.getY() - 120);
+            texto->setZValue(20);
+        }
     }
 
-    if(
-        jugador.getX() > 750 &&
-        etapa == 2
-        )
-    {
-        etapa = 3;
-
-        jugador.setX(50);
-
-        plataformas.push_back(
-            Plataforma(150,470,180,25)
-            );
-
-        plataformas.push_back(
-            Plataforma(400,420,180,25)
-            );
-
-        plataformas.push_back(
-            Plataforma(100,340,180,25)
-            );
-
-        plataformas.push_back(
-            Plataforma(450,280,180,25)
-            );
-
-        plataformas.push_back(
-            Plataforma(200,200,180,25)
-            );
-
-        plataformas.push_back(
-            Plataforma(500,130,180,25)
-            );
-
-        for(const Plataforma& plataforma : plataformas)
-        {
-            QGraphicsPixmapItem *roca =
-                escena->addPixmap(
-                    QPixmap(":/resources/sprites.png")
-                        .copy(390,180,170,120)
-                        .scaled(
-                            plataforma.getAncho(),
-                            plataforma.getAlto()
-                            )
-                    );
-
-            roca->setPos(
-                plataforma.getX(),
-                plataforma.getY()
-                );
-        }
-
-        if(etapa == 3)
-        {
-            if(
-                jugador.getY() < 500 &&
-                subEtapa == 1
-                )
-            {
-                subEtapa = 2;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_4.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-
-            if(
-                jugador.getY() < 430 &&
-                subEtapa == 2
-                )
-            {
-                subEtapa = 3;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_5.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-            if(
-                jugador.getY() < 360 &&
-                subEtapa == 3
-                )
-            {
-                subEtapa = 4;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_6.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-            if(
-                jugador.getY() < 300 &&
-                subEtapa == 4
-                )
-            {
-                subEtapa = 5;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_7.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-            if(
-                jugador.getY() < 240 &&
-                subEtapa == 5
-                )
-            {
-                subEtapa = 6;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_8.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-            if(
-                jugador.getY() < 180 &&
-                subEtapa == 6
-                )
-            {
-                subEtapa = 7;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_9.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-            if(
-                jugador.getY() < 120 &&
-                subEtapa == 7
-                )
-            {
-                subEtapa = 8;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_10.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-            if(
-                jugador.getY() < 70 &&
-                subEtapa == 8
-                )
-            {
-                subEtapa = 9;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/fondo_nivel1_11.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-            if(
-                jugador.getY() < 20 &&
-                subEtapa == 9
-                )
-            {
-                subEtapa = 10;
-
-                fondoVisual->setPixmap(
-                    QPixmap(
-                        ":/resources/Final1.png"
-                        ).scaled(
-                            800,
-                            600
-                            )
-                    );
-            }
-
-
-
-        }
-
-        fondoVisual->setPixmap(
-            QPixmap(
-                ":/resources/fondo_nivel1_3.png"
-                ).scaled(
-                    800,
-                    600
-                    )
-
-            );
-
-        obstaculos.push_back(
-            Obstaculo(350,500,10,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(550,390,10,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(180,450,15,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(480,330,15,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(250,450,15,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(550,260,15,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(350,150,15,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(150,480,20,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(450,380,20,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(250,250,20,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(120,470,20,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(520,350,20,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(220,220,20,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(600,120,20,50,50)
-            );
-
-        obstaculos.clear();
-
-        obstaculos.push_back(
-            Obstaculo(250,400,25,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(500,250,25,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(300,350,30,50,50)
-            );
-
-        obstaculos.push_back(
-            Obstaculo(550,180,30,50,50)
-            );
-
-        obstaculos.clear();
-
-        fondoVisual->setPixmap(
-            QPixmap(
-                ":/resources/Final1.png"
-                ).scaled(
-                    800,
-                    600
-                    )
-            );
-
-        meta =
-            escena->addRect(
-                700,
-                250,
-                50,
-                50,
-                QPen(Qt::green),
-                QBrush(Qt::green)
-                );
-
-        for(const Obstaculo& obstaculo : obstaculos)
-        {
-            QGraphicsRectItem* visual =
-                escena->addRect(
-                    0,
-                    0,
-                    obstaculo.getAncho(),
-                    obstaculo.getAlto(),
-                    QPen(Qt::black),
-                    QBrush(Qt::red)
-                    );
-
-            obstaculosVisuales.push_back(visual);
-        }    }
+    centerOn(jugador.getX() + 25, jugador.getY() + 25);
 }
 
 void EscenaJuego::keyPressEvent(QKeyEvent *event)
 {
-    if(event->key() == Qt::Key_A){
-        jugador.setVelocidadX(-5);
-    }
-
-    if(event->key() == Qt::Key_D){
-        jugador.setVelocidadX(5);
-    }
-
-    if(event->key() == Qt::Key_Space){
-        jugador.saltar();
-    }
+    if(event->key() == Qt::Key_A)     jugador.setVelocidadX(-5);
+    if(event->key() == Qt::Key_D)     jugador.setVelocidadX(5);
+    if(event->key() == Qt::Key_Space) jugador.saltar();
 }
 
 void EscenaJuego::keyReleaseEvent(QKeyEvent *event)
 {
-    if(event->key() == Qt::Key_A ||
-        event->key() == Qt::Key_D)
-    {
+    if(event->key() == Qt::Key_A || event->key() == Qt::Key_D)
         jugador.setVelocidadX(0);
-    }
 }
