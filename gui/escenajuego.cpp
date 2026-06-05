@@ -7,11 +7,13 @@
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
+#include <QFont>
 #include <QMediaPlayer>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QRandomGenerator>
 #include <QUrl>
+#include <cmath>
 #include <stdexcept>
 
 void detenerMusicaMenuNivel1();
@@ -314,6 +316,375 @@ void EscenaJuego::usarSpritesNivel2()
     spriteCayendoReves = spriteNivel2Cayendo;
 }
 
+void EscenaJuego::actualizarMovimientoHorizontal()
+{
+    float velocidadHorizontal = 0.0f;
+
+    if(nivelJuego == 2 && !juegoTerminado)
+        velocidadHorizontal += nivelRunner.getVelocidadScroll();
+
+    if(teclaIzquierdaPresionada)
+        velocidadHorizontal -= jugador.getVelocidadActual();
+
+    if(teclaDerechaPresionada)
+        velocidadHorizontal += jugador.getVelocidadActual();
+
+    jugador.setVelocidadX(velocidadHorizontal);
+
+    if(teclaIzquierdaPresionada && !teclaDerechaPresionada)
+        mirandoIzquierda = true;
+    else if(teclaDerechaPresionada || (nivelJuego == 2 && velocidadHorizontal >= 0.0f))
+        mirandoIzquierda = false;
+}
+
+void EscenaJuego::crearTextoNivel2()
+{
+    QFont titulo("Arial", 15, QFont::Bold);
+    QFont subtitulo("Arial", 10, QFont::Bold);
+
+    textoNivel = escena->addText("Nivel 2: Runner", titulo);
+    textoNivel->setDefaultTextColor(Qt::white);
+    textoNivel->setZValue(1200);
+
+    textoPuntaje = escena->addText("Bichos fuera: 0 | J para atacar", subtitulo);
+    textoPuntaje->setDefaultTextColor(QColor(255, 232, 150));
+    textoPuntaje->setZValue(1200);
+
+    textoTiempo = escena->addText("IA estable", subtitulo);
+    textoTiempo->setDefaultTextColor(QColor(196, 230, 255));
+    textoTiempo->setZValue(1200);
+}
+
+void EscenaJuego::iniciarAtaqueNivel2()
+{
+    if(nivelJuego != 2 || ataqueNivel2Activo || juegoTerminado)
+        return;
+
+    ataqueNivel2Activo = true;
+    tiempoAtaqueNivel2.restart();
+
+    if(!ataqueNivel2Visual)
+    {
+        ataqueNivel2Visual = escena->addRect(0, 0, 70, 45,
+                                             QPen(Qt::NoPen),
+                                             QBrush(QColor(255, 215, 90, 130)));
+        ataqueNivel2Visual->setZValue(22);
+    }
+
+    ataqueNivel2Visual->setVisible(true);
+    resolverAtaqueNivel2();
+}
+
+QRectF EscenaJuego::obtenerAreaAtaqueNivel2() const
+{
+    const float anchoAtaque = 80.0f;
+    const float altoAtaque = 46.0f;
+    const float x = mirandoIzquierda ? jugador.getX() - anchoAtaque + 8.0f
+                                     : jugador.getX() + 42.0f;
+    const float y = jugador.getY() + 14.0f;
+    return QRectF(x, y, anchoAtaque, altoAtaque);
+}
+
+void EscenaJuego::actualizarAtaqueNivel2()
+{
+    if(!ataqueNivel2Visual)
+        return;
+
+    if(!ataqueNivel2Activo)
+    {
+        ataqueNivel2Visual->setVisible(false);
+        return;
+    }
+
+    ataqueNivel2Visual->setRect(obtenerAreaAtaqueNivel2());
+
+    if(tiempoAtaqueNivel2.elapsed() >= 180)
+    {
+        ataqueNivel2Activo = false;
+        ataqueNivel2Visual->setVisible(false);
+    }
+}
+
+void EscenaJuego::resolverAtaqueNivel2()
+{
+    if(!ataqueNivel2Activo)
+        return;
+
+    const QRectF areaAtaque = obtenerAreaAtaqueNivel2();
+
+    for(Enemigo& enemigo : enemigosNivel2)
+    {
+        if(!enemigo.estaVivo())
+            continue;
+
+        QRectF rectEnemigo(enemigo.getX(), enemigo.getY(),
+                           enemigo.getTipo() == VOLADOR ? 56.0f : 48.0f,
+                           enemigo.getTipo() == VOLADOR ? 56.0f : 60.0f);
+
+        if(areaAtaque.intersects(rectEnemigo))
+        {
+            const bool estabaVivo = enemigo.estaVivo();
+            enemigo.recibirDanio(200);
+            if(estabaVivo && !enemigo.estaVivo())
+                enemigosDerrotadosNivel2++;
+        }
+
+        for(Proyectil& proyectil : enemigo.getProyectiles())
+        {
+            if(proyectil.estaActivo() &&
+                areaAtaque.intersects(QRectF(proyectil.getX(), proyectil.getY(), 18.0f, 18.0f)))
+            {
+                proyectil.desactivar();
+            }
+        }
+    }
+}
+
+void EscenaJuego::sincronizarProyectilesEnemigo(const Enemigo& enemigo,
+                                                std::vector<QGraphicsEllipseItem*>& visuales,
+                                                const QColor& color)
+{
+    const std::vector<Proyectil>& proyectiles = enemigo.getProyectiles();
+
+    while(visuales.size() < proyectiles.size())
+    {
+        QGraphicsEllipseItem* visual = escena->addEllipse(0, 0, 18, 18,
+                                                          QPen(Qt::NoPen),
+                                                          QBrush(color));
+        visual->setZValue(21);
+        visuales.push_back(visual);
+    }
+
+    while(visuales.size() > proyectiles.size())
+    {
+        QGraphicsEllipseItem* visual = visuales.back();
+        escena->removeItem(visual);
+        delete visual;
+        visuales.pop_back();
+    }
+
+    for(size_t i = 0; i < proyectiles.size(); ++i)
+    {
+        visuales[i]->setPos(proyectiles[i].getX(), proyectiles[i].getY());
+        visuales[i]->setVisible(proyectiles[i].estaActivo());
+    }
+}
+
+void EscenaJuego::sincronizarVisualesEnemigosNivel2()
+{
+    while(enemigosNivel2Visuales.size() < enemigosNivel2.size())
+    {
+        QGraphicsRectItem* visual = escena->addRect(0, 0, 48, 48,
+                                                    QPen(Qt::NoPen),
+                                                    QBrush(QColor(130, 28, 24)));
+        visual->setZValue(18);
+        enemigosNivel2Visuales.push_back(visual);
+        proyectilesEnemigosNivel2Visuales.emplace_back();
+    }
+
+    while(enemigosNivel2Visuales.size() > enemigosNivel2.size())
+    {
+        for(QGraphicsEllipseItem* visualProyectil : proyectilesEnemigosNivel2Visuales.back())
+        {
+            escena->removeItem(visualProyectil);
+            delete visualProyectil;
+        }
+        proyectilesEnemigosNivel2Visuales.pop_back();
+
+        QGraphicsRectItem* visual = enemigosNivel2Visuales.back();
+        escena->removeItem(visual);
+        delete visual;
+        enemigosNivel2Visuales.pop_back();
+    }
+
+    for(size_t i = 0; i < enemigosNivel2.size(); ++i)
+    {
+        const Enemigo& enemigo = enemigosNivel2[i];
+        QGraphicsRectItem* visual = enemigosNivel2Visuales[i];
+
+        QColor color(130, 28, 24);
+        QSizeF dimensiones(48.0f, 58.0f);
+
+        if(enemigo.getTipo() == VOLADOR)
+        {
+            color = QColor(35, 95, 150);
+            dimensiones = QSizeF(56.0f, 56.0f);
+        }
+        else if(enemigo.getTipo() == JEFE)
+        {
+            color = QColor(170, 90, 18);
+            dimensiones = QSizeF(62.0f, 62.0f);
+        }
+
+        visual->setBrush(QBrush(color));
+        visual->setRect(0, 0, dimensiones.width(), dimensiones.height());
+        visual->setPos(enemigo.getX(), enemigo.getY());
+        visual->setVisible(enemigo.estaVivo());
+
+        sincronizarProyectilesEnemigo(
+            enemigo,
+            proyectilesEnemigosNivel2Visuales[i],
+            enemigo.getTipo() == JEFE ? QColor(255, 114, 79) : QColor(255, 234, 120));
+    }
+
+    if(perseguidorNivel2Visual)
+    {
+        perseguidorNivel2Visual->setPos(perseguidorNivel2.getX(), perseguidorNivel2.getY());
+        perseguidorNivel2Visual->setVisible(perseguidorNivel2.estaVivo());
+    }
+
+    if(barreraIAVisual)
+        barreraIAVisual->setRect(0, 0, std::max(0.0f, fronteraIANivel2), ALTO_PANTALLA);
+
+    sincronizarProyectilesEnemigo(perseguidorNivel2,
+                                  proyectilesPerseguidorVisuales,
+                                  QColor(255, 87, 51));
+}
+
+void EscenaJuego::actualizarNivel2()
+{
+    const float deltaTiempo = 1.0f / 60.0f;
+    tiempoRunnerNivel2 += deltaTiempo;
+    nivelRunner.actualizarTiempo(deltaTiempo);
+    nivelRunner.actualizar();
+    actualizarMovimientoHorizontal();
+
+    fronteraIANivel2 += nivelRunner.getVelocidadPersecucion();
+
+    if(tiempoRunnerNivel2 >= proximoSpawnPatrullero)
+    {
+        const float xSpawn = std::min(nivelRunner.getMetaX() - 220.0f,
+                                      jugador.getX() + 520.0f + QRandomGenerator::global()->bounded(220));
+        Enemigo patrullero(xSpawn, 462.0f, PATRULLERO, 32, 18);
+        patrullero.setLimites(xSpawn - 70.0f, xSpawn + 70.0f);
+        patrullero.setVelocidades(1.9f + (dificultad == 2 ? 0.5f : 0.0f), 4.5f);
+        enemigosNivel2.push_back(std::move(patrullero));
+        proximoSpawnPatrullero = tiempoRunnerNivel2 + nivelRunner.getIntervaloSpawnPatrulleros() +
+                                 (QRandomGenerator::global()->bounded(90) / 100.0f);
+    }
+
+    if(tiempoRunnerNivel2 >= proximoSpawnVolador)
+    {
+        const float xSpawn = std::min(nivelRunner.getMetaX() - 180.0f,
+                                      jugador.getX() + 620.0f + QRandomGenerator::global()->bounded(180));
+        const float ySpawn = 240.0f + QRandomGenerator::global()->bounded(120);
+        Enemigo volador(xSpawn, ySpawn, VOLADOR, 26, 20);
+        volador.setRangoDeteccion(260.0f);
+        volador.setVelocidades(0.0f, 5.3f + (dificultad == 2 ? 0.6f : 0.0f));
+        enemigosNivel2.push_back(std::move(volador));
+        proximoSpawnVolador = tiempoRunnerNivel2 + nivelRunner.getIntervaloSpawnVoladores() +
+                              (QRandomGenerator::global()->bounded(80) / 100.0f);
+    }
+
+    if(tiempoRunnerNivel2 >= proximoSpawnDisparador)
+    {
+        const float xSpawn = std::min(nivelRunner.getMetaX() - 260.0f,
+                                      jugador.getX() + 760.0f + QRandomGenerator::global()->bounded(220));
+        const float ySpawn = 240.0f + QRandomGenerator::global()->bounded(90);
+        enemigosNivel2.emplace_back(xSpawn, ySpawn, JEFE, 40, dificultad == 2 ? 18 : 14);
+        proximoSpawnDisparador = tiempoRunnerNivel2 + nivelRunner.getIntervaloSpawnDisparadores() +
+                                 (QRandomGenerator::global()->bounded(120) / 100.0f);
+    }
+
+    const QRectF jugadorRect(jugador.getX(), jugador.getY(), 50.0f, 50.0f);
+
+    perseguidorNivel2.percibirJugador(jugador.getX(), jugador.getY());
+    perseguidorNivel2.actualizar();
+    if(perseguidorNivel2.getX() < fronteraIANivel2 + 25.0f)
+        perseguidorNivel2.setX(fronteraIANivel2 + 25.0f);
+
+    const QRectF rectPerseguidor(perseguidorNivel2.getX(), perseguidorNivel2.getY(), 62.0f, 62.0f);
+    if((jugador.getX() <= fronteraIANivel2 + 50.0f || rectPerseguidor.intersects(jugadorRect)) &&
+        (!tiempoDanioNivel2.isValid() || tiempoDanioNivel2.elapsed() >= 350))
+    {
+        recibirImpactoObjeto(dificultad == 2 ? 20 : 12);
+        tiempoDanioNivel2.restart();
+        jugador.setX(std::max(jugador.getX(), fronteraIANivel2 + 58.0f));
+    }
+
+    for(Proyectil& proyectil : perseguidorNivel2.getProyectiles())
+    {
+        if(!proyectil.estaActivo())
+            continue;
+
+        if(jugadorRect.intersects(QRectF(proyectil.getX(), proyectil.getY(), 18.0f, 18.0f)))
+        {
+            proyectil.desactivar();
+            recibirImpactoObjeto(dificultad == 2 ? proyectil.getDanio() : std::max(8, proyectil.getDanio() - 4));
+        }
+    }
+
+    for(size_t i = 0; i < enemigosNivel2.size();)
+    {
+        Enemigo& enemigo = enemigosNivel2[i];
+        enemigo.percibirJugador(jugador.getX(), jugador.getY());
+        enemigo.actualizar();
+
+        const QRectF rectEnemigo(enemigo.getX(), enemigo.getY(),
+                                 enemigo.getTipo() == VOLADOR ? 56.0f : (enemigo.getTipo() == JEFE ? 62.0f : 48.0f),
+                                 enemigo.getTipo() == VOLADOR ? 56.0f : (enemigo.getTipo() == JEFE ? 62.0f : 58.0f));
+
+        if(enemigo.estaVivo() && rectEnemigo.intersects(jugadorRect) &&
+            (!tiempoDanioNivel2.isValid() || tiempoDanioNivel2.elapsed() >= 350))
+        {
+            recibirImpactoObjeto(enemigo.getDanio());
+            tiempoDanioNivel2.restart();
+        }
+
+        for(Proyectil& proyectil : enemigo.getProyectiles())
+        {
+            if(!proyectil.estaActivo())
+                continue;
+
+            if(jugadorRect.intersects(QRectF(proyectil.getX(), proyectil.getY(), 18.0f, 18.0f)))
+            {
+                proyectil.desactivar();
+                recibirImpactoObjeto(proyectil.getDanio());
+            }
+        }
+
+        const bool enemigoAtras = enemigo.getX() < fronteraIANivel2 - 180.0f;
+        const bool enemigoLejano = enemigo.getX() > nivelRunner.getMetaX() + 260.0f;
+        const bool eliminar = !enemigo.estaVivo() || enemigoAtras || enemigoLejano;
+
+        if(eliminar)
+        {
+            for(QGraphicsEllipseItem* visualProyectil : proyectilesEnemigosNivel2Visuales[i])
+            {
+                escena->removeItem(visualProyectil);
+                delete visualProyectil;
+            }
+            proyectilesEnemigosNivel2Visuales.erase(proyectilesEnemigosNivel2Visuales.begin() + i);
+
+            QGraphicsRectItem* visual = enemigosNivel2Visuales[i];
+            escena->removeItem(visual);
+            delete visual;
+            enemigosNivel2Visuales.erase(enemigosNivel2Visuales.begin() + i);
+
+            enemigosNivel2.erase(enemigosNivel2.begin() + i);
+            continue;
+        }
+
+        ++i;
+    }
+
+    resolverAtaqueNivel2();
+    actualizarAtaqueNivel2();
+    sincronizarVisualesEnemigosNivel2();
+
+    if(textoPuntaje)
+        textoPuntaje->setPlainText(QString("Bichos fuera: %1 | J para atacar").arg(enemigosDerrotadosNivel2));
+
+    if(textoTiempo)
+    {
+        const QString estadoIA = nivelRunner.getTormentaActiva()
+        ? "IA en persecucion total"
+        : "IA estable";
+        textoTiempo->setPlainText(
+            QString("%1 | %2 s").arg(estadoIA).arg(tiempoRunnerNivel2, 0, 'f', 1));
+    }
+}
+
 void EscenaJuego::construirMundo(int mundoAlto)
 {
     const int pisoBaseY = mundoAlto - ALTO_PANTALLA;
@@ -464,6 +835,7 @@ void EscenaJuego::construirNivel2()
 {
     escena->clear();
     usarSpritesNivel2();
+    nivelRunner = NivelRunner();
     fondosItems.clear();
     plataformas.clear();
     obstaculos.clear();
@@ -474,6 +846,10 @@ void EscenaJuego::construirNivel2()
     piedrasVisuales.clear();
     velocidadesPiedras.clear();
     curacionesVisuales.clear();
+    enemigosNivel2.clear();
+    enemigosNivel2Visuales.clear();
+    proyectilesEnemigosNivel2Visuales.clear();
+    proyectilesPerseguidorVisuales.clear();
 
     meta = nullptr;
     ayudaVisual = nullptr;
@@ -482,12 +858,22 @@ void EscenaJuego::construirNivel2()
     wastedVisual = nullptr;
     botonRepetirVisual = nullptr;
     botonSalirVisual = nullptr;
+    perseguidorNivel2Visual = nullptr;
+    barreraIAVisual = nullptr;
+    ataqueNivel2Visual = nullptr;
+    textoNivel = nullptr;
+    textoPuntaje = nullptr;
+    textoTiempo = nullptr;
 
-    escena->setSceneRect(0, 0, ANCHO_PANTALLA * 3, ALTO_PANTALLA);
+    escena->setSceneRect(0, 0, nivelRunner.getMetaX() + 360.0f, ALTO_PANTALLA);
 
-    for(int i = 0; i < 3; i++)
+    const int cantidadFondos = static_cast<int>(std::ceil(escena->sceneRect().width() / ANCHO_PANTALLA));
+    for(int i = 0; i < cantidadFondos; i++)
     {
-        QPixmap fondo(rutaRecurso("fondo_nivel2_1.png"));
+        QPixmap fondo(rutaRecurso(i % 2 == 0 ? "fondo_nivel2_1.png" : "fondo_nivel2_2.png"));
+        if(fondo.isNull())
+            fondo.load(rutaRecurso("fondo_nivel2_3.png"));
+
         fondo = fondo.scaled(ANCHO_PANTALLA, ALTO_PANTALLA,
                              Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         QGraphicsPixmapItem* item = escena->addPixmap(fondo);
@@ -496,19 +882,68 @@ void EscenaJuego::construirNivel2()
         fondosItems.push_back(item);
     }
 
-    plataformas.push_back(Plataforma(0, 520, ANCHO_PANTALLA * 3, 80));
-    QGraphicsPixmapItem* piso = escena->addPixmap(
-        spritePiso2.scaled(ANCHO_PANTALLA * 3, 120, Qt::IgnoreAspectRatio,
-                           Qt::SmoothTransformation));
-    piso->setPos(0, 500);
-    piso->setZValue(4);
-    plataformasVisuales.push_back(piso);
+    for(const Plataforma& plataformaNivel2 : nivelRunner.getPlataformas())
+    {
+        plataformas.push_back(plataformaNivel2);
+
+        const bool esPiso = plataformaNivel2.getAlto() >= 70.0f;
+        QPixmap spriteBase = esPiso ? spritePiso2 : spritePlataformaNieve;
+        if(spriteBase.isNull())
+            spriteBase = esPiso ? spritePiso : spritePlataformaNieve;
+
+        QGraphicsPixmapItem* visual = escena->addPixmap(
+            spriteBase.scaled(plataformaNivel2.getAncho(),
+                              esPiso ? 120.0f : plataformaNivel2.getAlto(),
+                              Qt::IgnoreAspectRatio,
+                              Qt::SmoothTransformation));
+
+        visual->setPos(plataformaNivel2.getX(), esPiso ? 500.0f : plataformaNivel2.getY());
+        visual->setZValue(esPiso ? 4 : 5);
+        plataformasVisuales.push_back(visual);
+    }
+
+    for(const Obstaculo& obstaculoNivel2 : nivelRunner.getObstaculos())
+    {
+        obstaculos.push_back(obstaculoNivel2);
+        QGraphicsRectItem* visual = escena->addRect(0, 0,
+                                                    obstaculoNivel2.getAncho(),
+                                                    obstaculoNivel2.getAlto(),
+                                                    QPen(Qt::NoPen),
+                                                    QBrush(QColor(80, 48, 38)));
+        visual->setPos(obstaculoNivel2.getX(), obstaculoNivel2.getY());
+        visual->setZValue(11);
+        obstaculosVisuales.push_back(visual);
+    }
+
+    meta = escena->addPixmap(spritePortal);
+    meta->setPos(nivelRunner.getMetaX(), 360);
+    meta->setZValue(14);
+
+    barreraIAVisual = escena->addRect(0, 0, 1, ALTO_PANTALLA,
+                                      QPen(Qt::NoPen),
+                                      QBrush(QColor(159, 33, 24, 95)));
+    barreraIAVisual->setZValue(-10);
+
+    perseguidorNivel2 = Enemigo(10.0f, 410.0f, JEFE, 120, dificultad == 2 ? 18 : 14);
+    perseguidorNivel2Visual = escena->addRect(0, 0, 62, 62,
+                                              QPen(Qt::NoPen),
+                                              QBrush(QColor(170, 32, 24)));
+    perseguidorNivel2Visual->setZValue(19);
 
     jugador.setX(80);
     jugador.setY(450);
     jugador.setVelocidadX(0);
     jugador.setVelocidadY(0);
     jugador.setEnSuelo(true);
+    teclaIzquierdaPresionada = false;
+    teclaDerechaPresionada = false;
+    ataqueNivel2Activo = false;
+    enemigosDerrotadosNivel2 = 0;
+    tiempoRunnerNivel2 = 0.0f;
+    fronteraIANivel2 = 0.0f;
+    proximoSpawnPatrullero = 1.2f;
+    proximoSpawnVolador = 3.0f;
+    proximoSpawnDisparador = 5.5f;
 
     jugadorVisual = escena->addPixmap(spriteQuieto.scaled(80, 80, Qt::KeepAspectRatio,
                                                           Qt::SmoothTransformation));
@@ -518,7 +953,9 @@ void EscenaJuego::construirNivel2()
     vidaVisual = escena->addPixmap(vidaFull.scaled(115, 45, Qt::KeepAspectRatio,
                                                    Qt::SmoothTransformation));
     vidaVisual->setZValue(1000);
+    crearTextoNivel2();
     actualizarVidaVisual();
+    actualizarMovimientoHorizontal();
 }
 
 void EscenaJuego::cambiarANivel2()
@@ -612,6 +1049,9 @@ void EscenaJuego::reiniciarNivelActual()
     potenciadorActivo = false;
     tipoImpacto = 0;
     estabaCayendo = false;
+    teclaIzquierdaPresionada = false;
+    teclaDerechaPresionada = false;
+    ataqueNivel2Activo = false;
 
     if(nivelJuego == 2)
     {
@@ -696,7 +1136,7 @@ void EscenaJuego::crearCuraciones()
         curacion->setPos(
             plataforma.getX() + plataforma.getAncho() / 2.0f - spriteCuracion.width() / 2.0f,
             plataforma.getY() - spriteCuracion.height() - 8.0f
-        );
+            );
         curacion->setZValue(14);
         curacionesVisuales.push_back(curacion);
     }
@@ -721,13 +1161,9 @@ void EscenaJuego::actualizarCuraciones()
 void EscenaJuego::activarPotenciador()
 {
     jugador.activarVelocidad();
-    if(jugador.getVelocidadX() < 0)
-        jugador.setVelocidadX(-jugador.getVelocidadActual());
-    else if(jugador.getVelocidadX() > 0)
-        jugador.setVelocidadX(jugador.getVelocidadActual());
-
     potenciadorActivo = true;
     tiempoPotenciador.restart();
+    actualizarMovimientoHorizontal();
 
     if(relojVisual && !spritesReloj.empty())
     {
@@ -744,21 +1180,16 @@ void EscenaJuego::actualizarPotenciador()
     const int indiceSprite = std::min(
         static_cast<int>(spritesReloj.size()) - 1,
         static_cast<int>(tiempoTranscurrido / 1000)
-    );
+        );
 
     if(relojVisual && !spritesReloj.empty() && indiceSprite >= 0)
         relojVisual->setPixmap(spritesReloj[indiceSprite]);
 
     if(tiempoTranscurrido >= 5000)
     {
-        const float velocidadAnterior = jugador.getVelocidadX();
         jugador.desactivarVelocidad();
-        if(velocidadAnterior < 0)
-            jugador.setVelocidadX(-jugador.getVelocidadActual());
-        else if(velocidadAnterior > 0)
-            jugador.setVelocidadX(jugador.getVelocidadActual());
-
         potenciadorActivo = false;
+        actualizarMovimientoHorizontal();
 
         if(relojVisual)
             relojVisual->setVisible(false);
@@ -921,6 +1352,15 @@ void EscenaJuego::actualizarHud()
 
     if(relojVisual)
         relojVisual->setPos(zonaVisible.left() + 145, zonaVisible.top() + 14);
+
+    if(textoNivel)
+        textoNivel->setPos(zonaVisible.left() + 20, zonaVisible.top() + 72);
+
+    if(textoPuntaje)
+        textoPuntaje->setPos(zonaVisible.left() + 20, zonaVisible.top() + 102);
+
+    if(textoTiempo)
+        textoTiempo->setPos(zonaVisible.left() + 20, zonaVisible.top() + 126);
 }
 
 void EscenaJuego::actualizarJuego()
@@ -980,6 +1420,9 @@ void EscenaJuego::actualizarJuego()
 
         if(colX && colY) recibirImpactoObjeto(obs.getDanio());
     }
+
+    if(nivelJuego == 2)
+        actualizarNivel2();
 
     actualizarPiedras();
     actualizarAyuda();
@@ -1072,14 +1515,35 @@ void EscenaJuego::actualizarJuego()
         obstaculosVisuales[i]->setPos(obstaculos[i].getX(), obstaculos[i].getY());
     }
 
-    if(nivelJuego == 1 && meta)
+    if(meta)
     {
         QRectF jugadorRect(jugador.getX(), jugador.getY(), 50, 50);
 
-        if(jugadorRect.intersects(meta->sceneBoundingRect()))
+        if(nivelJuego == 1 && jugadorRect.intersects(meta->sceneBoundingRect()))
         {
             cambiarANivel2();
             centerOn(jugador.getX() + 25, jugador.getY() + 25);
+            actualizarHud();
+            return;
+        }
+
+        if(nivelJuego == 2 &&
+            nivelRunner.seAlcanzoLaMeta(jugador.getX()) &&
+            jugadorRect.intersects(meta->sceneBoundingRect()))
+        {
+            juegoTerminado = true;
+            if(timer) timer->stop();
+
+            if(textoNivel)
+                textoNivel->setPlainText("Nivel 2 completado");
+
+            if(textoPuntaje)
+                textoPuntaje->setPlainText(
+                    QString("Bichos fuera: %1").arg(enemigosDerrotadosNivel2));
+
+            if(textoTiempo)
+                textoTiempo->setPlainText("Escapaste de la IA");
+
             actualizarHud();
             return;
         }
@@ -1111,14 +1575,14 @@ void EscenaJuego::keyPressEvent(QKeyEvent *event)
 {
     if(event->key() == Qt::Key_A)
     {
-        mirandoIzquierda = true;
-        jugador.setVelocidadX(-jugador.getVelocidadActual());
+        teclaIzquierdaPresionada = true;
+        actualizarMovimientoHorizontal();
     }
 
     if(event->key() == Qt::Key_D)
     {
-        mirandoIzquierda = false;
-        jugador.setVelocidadX(jugador.getVelocidadActual());
+        teclaDerechaPresionada = true;
+        actualizarMovimientoHorizontal();
     }
 
     if(event->key() == Qt::Key_S)
@@ -1126,13 +1590,22 @@ void EscenaJuego::keyPressEvent(QKeyEvent *event)
         protegiendo = true;
     }
 
+    if(event->key() == Qt::Key_J)
+        iniciarAtaqueNivel2();
+
     if(event->key() == Qt::Key_Space) jugador.saltar();
 }
 
 void EscenaJuego::keyReleaseEvent(QKeyEvent *event)
 {
+    if(event->key() == Qt::Key_A)
+        teclaIzquierdaPresionada = false;
+
+    if(event->key() == Qt::Key_D)
+        teclaDerechaPresionada = false;
+
     if(event->key() == Qt::Key_A || event->key() == Qt::Key_D)
-        jugador.setVelocidadX(0);
+        actualizarMovimientoHorizontal();
 
     if(event->key() == Qt::Key_S)
         protegiendo = false;
