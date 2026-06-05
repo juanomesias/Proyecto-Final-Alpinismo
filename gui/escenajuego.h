@@ -3,12 +3,14 @@
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QGraphicsEllipseItem>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsTextItem>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QElapsedTimer>
+#include <QColor>
 #include <QPixmap>
 #include <QString>
 #include <QVector>
@@ -18,7 +20,10 @@
 #include "../logica/obstaculo.h"
 #include "../logica/powerup.h"
 #include "../logica/meta.h"
+#include "../logica/enemigo.h"
+#include "../logica/nivelrunner.h"
 #include "../fisica/movimientoparabolico.h"
+#include "../fisica/movimientooscilatorio.h"
 #include "../fisica/efectofriccion.h"
 #include <vector>
 
@@ -29,6 +34,45 @@ class EscenaJuego : public QGraphicsView
 {
     Q_OBJECT
     QVector<QGraphicsPixmapItem*> fondosItems;
+
+    enum class FaseNivel2
+    {
+        Runner,
+        DueloFinal,
+        Completado
+    };
+
+    struct OndaOscilatoriaNivel2
+    {
+        float x;
+        float y;
+        float yBase;
+        float velocidadX;
+        float ancho;
+        float alto;
+        int danio;
+        bool activa;
+        MovimientoOscilatorio movimiento;
+
+        OndaOscilatoriaNivel2(float xInicial,
+                              float yBaseInicial,
+                              float velocidadXInicial,
+                              float amplitud,
+                              float anchoInicial,
+                              float altoInicial,
+                              int danioInicial)
+            : x(xInicial),
+            y(yBaseInicial),
+            yBase(yBaseInicial),
+            velocidadX(velocidadXInicial),
+            ancho(anchoInicial),
+            alto(altoInicial),
+            danio(danioInicial),
+            activa(true),
+            movimiento(amplitud)
+        {
+        }
+    };
 
 private:
     QGraphicsScene*       escena;
@@ -83,6 +127,25 @@ private:
     void reiniciarNivelActual();
     void usarSpritesNivel1();
     void usarSpritesNivel2();
+    void actualizarMovimientoHorizontal();
+    void actualizarNivel2();
+    void sincronizarVisualesEnemigosNivel2();
+    void sincronizarProyectilesEnemigo(const Enemigo& enemigo,
+                                       std::vector<QGraphicsEllipseItem*>& visuales,
+                                       const QColor& color);
+    void actualizarOndasOscilatoriasNivel2();
+    void lanzarOndaOscilatoriaNivel2(const Enemigo& origen,
+                                     float amplitud,
+                                     float velocidad,
+                                     int danio);
+    void invocarApoyoIANivel2();
+    void iniciarDueloFinalNivel2();
+    void limpiarEntidadesSecundariasNivel2();
+    void actualizarAtaqueNivel2();
+    void iniciarAtaqueNivel2();
+    QRectF obtenerAreaAtaqueNivel2() const;
+    void resolverAtaqueNivel2();
+    void crearTextoNivel2();
 
     QPixmap spriteNivel1Quieto;
     QPixmap spriteNivel1Saltar;
@@ -131,6 +194,19 @@ private:
     std::vector<QPixmap>               spritesPiedras;
     std::vector<QGraphicsPixmapItem*>  curacionesVisuales;
     std::vector<QPixmap>               spritesReloj;
+    NivelRunner nivelRunner;
+    Enemigo perseguidorNivel2;
+    std::vector<Enemigo>               enemigosNivel2;
+    std::vector<QGraphicsRectItem*>    enemigosNivel2Visuales;
+    std::vector<std::vector<QGraphicsEllipseItem*>> proyectilesEnemigosNivel2Visuales;
+    std::vector<QGraphicsEllipseItem*> proyectilesPerseguidorVisuales;
+    std::vector<OndaOscilatoriaNivel2> ondasOscilatoriasNivel2;
+    std::vector<QGraphicsEllipseItem*> ondasOscilatoriasNivel2Visuales;
+    QGraphicsRectItem* perseguidorNivel2Visual = nullptr;
+    QGraphicsRectItem* barreraIAVisual = nullptr;
+    QGraphicsRectItem* ataqueNivel2Visual = nullptr;
+    QGraphicsRectItem* muroArenaIzquierdoNivel2Visual = nullptr;
+    QGraphicsRectItem* muroArenaDerechoNivel2Visual = nullptr;
     QGraphicsPixmapItem* ayudaVisual = nullptr;
     QGraphicsPixmapItem* relojVisual = nullptr;
     QGraphicsPixmapItem* wastedVisual = nullptr;
@@ -145,7 +221,7 @@ private:
 
     QGraphicsPixmapItem* meta       = nullptr;
     QGraphicsPixmapItem* vidaVisual = nullptr;
-    QGraphicsTextItem*  textoVida;
+    QGraphicsTextItem*  textoVida = nullptr;
     QPixmap vidaFull;
     QPixmap vidaUnoMenos;
     QPixmap vidaMitad;
@@ -158,10 +234,22 @@ private:
     bool mirandoIzquierda = false;
     bool bloqueoCambio = false;
     bool cambioEscenaRealizado = false;
-    QGraphicsTextItem*  textoNivel;
-    QGraphicsTextItem*  textoPuntaje;
-    QGraphicsTextItem*  textoTiempo;
-    int tiempoJuego;
+    bool teclaIzquierdaPresionada = false;
+    bool teclaDerechaPresionada = false;
+    bool ataqueNivel2Activo = false;
+    FaseNivel2 faseNivel2 = FaseNivel2::Runner;
+    QGraphicsTextItem*  textoNivel = nullptr;
+    QGraphicsTextItem*  textoPuntaje = nullptr;
+    QGraphicsTextItem*  textoTiempo = nullptr;
+    int tiempoJuego = 0;
+    int enemigosDerrotadosNivel2 = 0;
+    float tiempoRunnerNivel2 = 0.0f;
+    float fronteraIANivel2 = 0.0f;
+    float impulsoPersecucionNivel2 = 0.0f;
+    float inicioArenaFinalNivel2 = 0.0f;
+    float finArenaFinalNivel2 = 0.0f;
+    QElapsedTimer tiempoAtaqueNivel2;
+    QElapsedTimer tiempoDanioNivel2;
 
     QMediaPlayer* musica = nullptr;
     QAudioOutput* salidaMusica = nullptr;

@@ -12,6 +12,8 @@ private:
     float duracionTormenta;
     bool tormentaActiva;
     float metaX;
+    float inicioDueloFinal;
+    float finDueloFinal;
     float intervaloSpawnPatrulleros;
     float intervaloSpawnVoladores;
     float intervaloSpawnDisparadores;
@@ -31,6 +33,8 @@ public:
     float getVelocidadPersecucion() const;
     bool getTormentaActiva() const;
     float getMetaX() const;
+    float getInicioDueloFinal() const;
+    float getFinDueloFinal() const;
     float getIntervaloSpawnPatrulleros() const;
     float getIntervaloSpawnVoladores() const;
     float getIntervaloSpawnDisparadores() const;
