@@ -3,12 +3,14 @@
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QGraphicsEllipseItem>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsTextItem>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QElapsedTimer>
+#include <QColor>
 #include <QPixmap>
 #include <QString>
 #include <QVector>
@@ -18,6 +20,8 @@
 #include "../logica/obstaculo.h"
 #include "../logica/powerup.h"
 #include "../logica/meta.h"
+#include "../logica/enemigo.h"
+#include "../logica/nivelrunner.h"
 #include "../fisica/movimientoparabolico.h"
 #include "../fisica/efectofriccion.h"
 #include <vector>
@@ -83,6 +87,17 @@ private:
     void reiniciarNivelActual();
     void usarSpritesNivel1();
     void usarSpritesNivel2();
+    void actualizarMovimientoHorizontal();
+    void actualizarNivel2();
+    void sincronizarVisualesEnemigosNivel2();
+    void sincronizarProyectilesEnemigo(const Enemigo& enemigo,
+                                       std::vector<QGraphicsEllipseItem*>& visuales,
+                                       const QColor& color);
+    void actualizarAtaqueNivel2();
+    void iniciarAtaqueNivel2();
+    QRectF obtenerAreaAtaqueNivel2() const;
+    void resolverAtaqueNivel2();
+    void crearTextoNivel2();
 
     QPixmap spriteNivel1Quieto;
     QPixmap spriteNivel1Saltar;
@@ -131,6 +146,15 @@ private:
     std::vector<QPixmap>               spritesPiedras;
     std::vector<QGraphicsPixmapItem*>  curacionesVisuales;
     std::vector<QPixmap>               spritesReloj;
+    NivelRunner nivelRunner;
+    Enemigo perseguidorNivel2;
+    std::vector<Enemigo>               enemigosNivel2;
+    std::vector<QGraphicsRectItem*>    enemigosNivel2Visuales;
+    std::vector<std::vector<QGraphicsEllipseItem*>> proyectilesEnemigosNivel2Visuales;
+    std::vector<QGraphicsEllipseItem*> proyectilesPerseguidorVisuales;
+    QGraphicsRectItem* perseguidorNivel2Visual = nullptr;
+    QGraphicsRectItem* barreraIAVisual = nullptr;
+    QGraphicsRectItem* ataqueNivel2Visual = nullptr;
     QGraphicsPixmapItem* ayudaVisual = nullptr;
     QGraphicsPixmapItem* relojVisual = nullptr;
     QGraphicsPixmapItem* wastedVisual = nullptr;
@@ -145,7 +169,7 @@ private:
 
     QGraphicsPixmapItem* meta       = nullptr;
     QGraphicsPixmapItem* vidaVisual = nullptr;
-    QGraphicsTextItem*  textoVida;
+    QGraphicsTextItem*  textoVida = nullptr;
     QPixmap vidaFull;
     QPixmap vidaUnoMenos;
     QPixmap vidaMitad;
@@ -158,10 +182,21 @@ private:
     bool mirandoIzquierda = false;
     bool bloqueoCambio = false;
     bool cambioEscenaRealizado = false;
-    QGraphicsTextItem*  textoNivel;
-    QGraphicsTextItem*  textoPuntaje;
-    QGraphicsTextItem*  textoTiempo;
-    int tiempoJuego;
+    bool teclaIzquierdaPresionada = false;
+    bool teclaDerechaPresionada = false;
+    bool ataqueNivel2Activo = false;
+    QGraphicsTextItem*  textoNivel = nullptr;
+    QGraphicsTextItem*  textoPuntaje = nullptr;
+    QGraphicsTextItem*  textoTiempo = nullptr;
+    int tiempoJuego = 0;
+    int enemigosDerrotadosNivel2 = 0;
+    float tiempoRunnerNivel2 = 0.0f;
+    float fronteraIANivel2 = 0.0f;
+    float proximoSpawnPatrullero = 0.0f;
+    float proximoSpawnVolador = 0.0f;
+    float proximoSpawnDisparador = 0.0f;
+    QElapsedTimer tiempoAtaqueNivel2;
+    QElapsedTimer tiempoDanioNivel2;
 
     QMediaPlayer* musica = nullptr;
     QAudioOutput* salidaMusica = nullptr;
