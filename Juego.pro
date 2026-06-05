@@ -5,6 +5,7 @@ CONFIG += c++17
 SOURCES += \
     gui/menuprincipal.cpp \
     logica/meta.cpp \
+    logica/proyectil.cpp \
     main.cpp \
     logica/juego.cpp \
     logica/nivel.cpp \
@@ -43,6 +44,7 @@ HEADERS += \
     fisica/efectofriccion.h \
     logica/plataforma.h \
     gui/ventanajuego.h \
-    gui/escenajuego.h
+    gui/escenajuego.h \
+    logica/proyectil.h
 
 RESOURCES += resources.qrc
