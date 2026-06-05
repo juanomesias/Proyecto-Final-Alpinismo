@@ -19,11 +19,14 @@ enum TipoEnemigo
 enum EstadoEnemigo
 {
     QUIETO,
+    PERSIGUIENDO,
     PATRULLANDO,
     EMBISTIENDO,
+    OSCILANDO,
+    PRESIONANDO,
+    INVOCANDO_APOYO,
     GIRANDO,
-    RECUPERANDO,
-    ATAQUE_RADIAL
+    RECUPERANDO
 };
 
 class Enemigo : public Entidad
@@ -41,9 +44,14 @@ private:
     float rangoDeteccion;
     float tiempoEstado;
     bool invulnerable;
-    bool salvaRadialGenerada;
     float jugadorObjetivoX;
     float jugadorObjetivoY;
+    float velocidadJugadorObjetivoX;
+    float velocidadJugadorObjetivoY;
+    bool jugadorEnAire;
+    bool jugadorProtegiendo;
+    bool jugadorAtacando;
+    bool modoDuelo;
     std::unique_ptr<AgenteInteligente> ia;
     std::vector<Proyectil> proyectiles;
     MovimientoParabolico gravedadProyectiles;
@@ -53,7 +61,6 @@ private:
     void actualizarJefe();
     void actualizarProyectiles();
     void lanzarProyectilDireccionado(float direccionX, float direccionY, float velocidadExtra = 0.0f);
-    void lanzarSalvaRadial();
 
 public:
     Enemigo(float xInicial = 0.0f,
@@ -68,15 +75,24 @@ public:
     Enemigo& operator=(const Enemigo&) = delete;
 
     void actualizar() override;
-    void percibirJugador(float xJugador, float yJugador);
+    void percibirJugador(float xJugador,
+                         float yJugador,
+                         float velocidadJugadorX = 0.0f,
+                         float velocidadJugadorY = 0.0f,
+                         bool jugadorEnAire = false,
+                         bool jugadorProtegiendo = false,
+                         bool jugadorAtacando = false,
+                         bool modoDuelo = false);
     void recibirDanio(int cantidad);
 
     void setLimites(float izquierdo, float derecho);
     void setRangoDeteccion(float rango);
     void setVelocidades(float movimiento, float embiste);
+    void consumirDecisionIA();
 
     TipoEnemigo getTipo() const;
     EstadoEnemigo getEstado() const;
+    AtaqueIA getAtaqueIA() const;
     int getVida() const;
     int getDanio() const;
     bool estaVivo() const;

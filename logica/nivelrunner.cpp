@@ -4,15 +4,17 @@
 
 NivelRunner::NivelRunner()
 {
-    velocidadScroll = 3.0f;
-    velocidadPersecucion = 2.15f;
+    velocidadScroll = 3.2f;
+    velocidadPersecucion = 2.2f;
     tiempoTranscurrido = 0.0f;
-    duracionTormenta = 14.0f;
+    duracionTormenta = 18.0f;
     tormentaActiva = false;
-    metaX = 3200.0f;
-    intervaloSpawnPatrulleros = 2.2f;
-    intervaloSpawnVoladores = 4.3f;
-    intervaloSpawnDisparadores = 6.2f;
+    inicioDueloFinal = 11050.0f;
+    finDueloFinal = 12550.0f;
+    metaX = inicioDueloFinal;
+    intervaloSpawnPatrulleros = 7.0f;
+    intervaloSpawnVoladores = 9.0f;
+    intervaloSpawnDisparadores = 12.0f;
 
     cargarNivel();
 }
@@ -21,13 +23,13 @@ void NivelRunner::actualizar()
 {
     if(tormentaActiva)
     {
-        velocidadScroll = std::min(4.2f, velocidadScroll + 0.0018f);
-        velocidadPersecucion = std::min(3.35f, velocidadPersecucion + 0.0015f);
+        velocidadScroll = std::min(4.4f, velocidadScroll + 0.0015f);
+        velocidadPersecucion = std::min(3.6f, velocidadPersecucion + 0.0014f);
     }
     else
     {
-        velocidadScroll = std::min(3.4f, velocidadScroll + 0.0006f);
-        velocidadPersecucion = std::min(2.55f, velocidadPersecucion + 0.0005f);
+        velocidadScroll = std::min(3.7f, velocidadScroll + 0.0005f);
+        velocidadPersecucion = std::min(2.8f, velocidadPersecucion + 0.0004f);
     }
 }
 
@@ -36,20 +38,32 @@ void NivelRunner::cargarNivel()
     plataformas.clear();
     obstaculos.clear();
 
-    agregarPlataforma(Plataforma(0, 520, 950, 80));
-    agregarPlataforma(Plataforma(1080, 520, 520, 80));
-    agregarPlataforma(Plataforma(1680, 520, 620, 80));
-    agregarPlataforma(Plataforma(2380, 520, 980, 80));
+    float xBase = 0.0f;
+    const float anchoSegmento = 820.0f;
+    const float separacion = 120.0f;
 
-    agregarPlataforma(Plataforma(620, 410, 160, 24));
-    agregarPlataforma(Plataforma(1420, 360, 180, 24));
-    agregarPlataforma(Plataforma(2140, 395, 170, 24));
-    agregarPlataforma(Plataforma(2860, 340, 180, 24));
+    for(int i = 0; i < 14; ++i)
+    {
+        agregarPlataforma(Plataforma(xBase, 520, anchoSegmento, 80));
 
-    agregarObstaculo(Obstaculo(420, 470, 20, 42, 42));
-    agregarObstaculo(Obstaculo(1260, 470, 20, 42, 42));
-    agregarObstaculo(Obstaculo(1980, 470, 25, 48, 48));
-    agregarObstaculo(Obstaculo(2740, 470, 25, 48, 48));
+        if(i % 2 == 0)
+            agregarPlataforma(Plataforma(xBase + 250.0f, 390.0f - (i % 3) * 25.0f, 190, 26));
+        else
+            agregarPlataforma(Plataforma(xBase + 410.0f, 345.0f + (i % 3) * 20.0f, 210, 26));
+
+        if(i % 3 == 1)
+            agregarPlataforma(Plataforma(xBase + 110.0f, 300.0f, 150, 24));
+
+        agregarObstaculo(Obstaculo(xBase + 300.0f, 470.0f, 18, 40, 40));
+        if(i % 2 == 1)
+            agregarObstaculo(Obstaculo(xBase + 620.0f, 470.0f, 22, 46, 46));
+
+        xBase += anchoSegmento + separacion;
+    }
+
+    agregarPlataforma(Plataforma(inicioDueloFinal, 520, finDueloFinal - inicioDueloFinal + 300.0f, 80));
+    agregarPlataforma(Plataforma(inicioDueloFinal + 260.0f, 360.0f, 230.0f, 24.0f));
+    agregarPlataforma(Plataforma(inicioDueloFinal + 860.0f, 330.0f, 220.0f, 24.0f));
 }
 
 void NivelRunner::actualizarTiempo(float deltaTiempo)
@@ -63,15 +77,15 @@ void NivelRunner::actualizarTiempo(float deltaTiempo)
 void NivelRunner::activarTormenta()
 {
     tormentaActiva = true;
-    velocidadScroll = std::max(velocidadScroll, 3.8f);
-    velocidadPersecucion = std::max(velocidadPersecucion, 2.9f);
+    velocidadScroll = std::max(velocidadScroll, 3.95f);
+    velocidadPersecucion = std::max(velocidadPersecucion, 3.05f);
 }
 
 void NivelRunner::desactivarTormenta()
 {
     tormentaActiva = false;
-    velocidadScroll = 3.2f;
-    velocidadPersecucion = 2.3f;
+    velocidadScroll = 3.35f;
+    velocidadPersecucion = 2.35f;
 }
 
 bool NivelRunner::seAlcanzoLaMeta(float xJugador) const
@@ -97,6 +111,16 @@ bool NivelRunner::getTormentaActiva() const
 float NivelRunner::getMetaX() const
 {
     return metaX;
+}
+
+float NivelRunner::getInicioDueloFinal() const
+{
+    return inicioDueloFinal;
+}
+
+float NivelRunner::getFinDueloFinal() const
+{
+    return finDueloFinal;
 }
 
 float NivelRunner::getIntervaloSpawnPatrulleros() const

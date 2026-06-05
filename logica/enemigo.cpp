@@ -21,9 +21,14 @@ Enemigo::Enemigo(float xInicial,
     rangoDeteccion(180.0f),
     tiempoEstado(0.0f),
     invulnerable(false),
-    salvaRadialGenerada(false),
     jugadorObjetivoX(xInicial),
     jugadorObjetivoY(yInicial),
+    velocidadJugadorObjetivoX(0.0f),
+    velocidadJugadorObjetivoY(0.0f),
+    jugadorEnAire(false),
+    jugadorProtegiendo(false),
+    jugadorAtacando(false),
+    modoDuelo(false),
     gravedadProyectiles(0.0f)
 {
     if(tipo == JEFE)
@@ -56,10 +61,23 @@ void Enemigo::actualizar()
     actualizarProyectiles();
 }
 
-void Enemigo::percibirJugador(float xJugador, float yJugador)
+void Enemigo::percibirJugador(float xJugador,
+                              float yJugador,
+                              float velocidadJugadorX,
+                              float velocidadJugadorY,
+                              bool jugadorEnAire,
+                              bool jugadorProtegiendo,
+                              bool jugadorAtacando,
+                              bool modoDuelo)
 {
     jugadorObjetivoX = xJugador;
     jugadorObjetivoY = yJugador;
+    velocidadJugadorObjetivoX = velocidadJugadorX;
+    velocidadJugadorObjetivoY = velocidadJugadorY;
+    this->jugadorEnAire = jugadorEnAire;
+    this->jugadorProtegiendo = jugadorProtegiendo;
+    this->jugadorAtacando = jugadorAtacando;
+    this->modoDuelo = modoDuelo;
 
     if(tipo == VOLADOR && estado == QUIETO)
     {
@@ -138,7 +156,17 @@ void Enemigo::actualizarJefe()
 
     const float deltaTiempo = 1.0f / 60.0f;
 
-    ia->percibir(getX(), getY(), jugadorObjetivoX, jugadorObjetivoY, vida);
+    ia->percibir(getX(),
+                 getY(),
+                 jugadorObjetivoX,
+                 jugadorObjetivoY,
+                 velocidadJugadorObjetivoX,
+                 velocidadJugadorObjetivoY,
+                 jugadorEnAire,
+                 jugadorProtegiendo,
+                 jugadorAtacando,
+                 modoDuelo,
+                 vida);
     ia->razonar();
     ia->actuar(deltaTiempo);
     ia->aprender();
@@ -148,27 +176,37 @@ void Enemigo::actualizarJefe()
     const float dx = jugadorObjetivoX - getX();
     const float dy = jugadorObjetivoY - getY();
     const float distancia = std::sqrt(dx * dx + dy * dy);
-    const EstadoIA estadoIA = ia->getEstadoActual();
+    const AtaqueIA ataque = ia->getAtaqueActual();
 
-    if(estadoIA == SALVA_RADIAL)
+    if(ataque == AtaqueIA::ATAQUE_OSCILATORIO)
     {
-        estado = ATAQUE_RADIAL;
-        if(!salvaRadialGenerada)
-        {
-            lanzarSalvaRadial();
-            salvaRadialGenerada = true;
-        }
-
+        estado = OSCILANDO;
         setVelocidadX(0.0f);
         setVelocidadY(0.0f);
         return;
     }
 
-    salvaRadialGenerada = false;
+    if(ataque == AtaqueIA::ATAQUE_ACELERAR_CAZA)
+    {
+        estado = PRESIONANDO;
+        setVelocidadX(0.0f);
+        setVelocidadY(0.0f);
+        return;
+    }
 
-    if(estadoIA == GOLPE_GIRATORIO)
+    if(ataque == AtaqueIA::ATAQUE_INVOCAR_APOYO)
+    {
+        estado = INVOCANDO_APOYO;
+        setVelocidadX(0.0f);
+        setVelocidadY(0.0f);
+        return;
+    }
+
+    if(ataque == AtaqueIA::ATAQUE_GIRO ||
+        ia->getEstadoActual() == EstadoIA::GOLPE_GIRATORIO)
     {
         estado = GIRANDO;
+
         if(distancia > 0.0f)
         {
             setVelocidadX((dx / distancia) * (ia->getVelocidadMovimientoActual() * 1.35f));
@@ -184,7 +222,7 @@ void Enemigo::actualizarJefe()
         return;
     }
 
-    if(estadoIA == RECUPERANDO_IA)
+    if(ia->getEstadoActual() == EstadoIA::RECUPERANDO_IA)
     {
         estado = RECUPERANDO;
         setVelocidadX(0.0f);
@@ -192,7 +230,7 @@ void Enemigo::actualizarJefe()
         return;
     }
 
-    if(ia->getAtaqueActual() == ATAQUE_PROYECTIL)
+    if(ataque == AtaqueIA::ATAQUE_PROYECTIL_PREDICTIVO)
     {
         estado = QUIETO;
         lanzarProyectilDireccionado(ia->getDireccionProyectilX(),
@@ -202,18 +240,41 @@ void Enemigo::actualizarJefe()
         return;
     }
 
-    estado = QUIETO;
-
-    if(distancia > 120.0f && distancia > 0.0f)
+    if(modoDuelo)
     {
-        setVelocidadX((dx / distancia) * ia->getVelocidadMovimientoActual());
-        setVelocidadY((dy / distancia) * (ia->getVelocidadMovimientoActual() * 0.45f));
-        mover();
+        estado = PERSIGUIENDO;
+        if(distancia > 90.0f && distancia > 0.0f)
+        {
+            setVelocidadX((dx / distancia) * ia->getVelocidadMovimientoActual());
+            setVelocidadY((dy / distancia) * (ia->getVelocidadMovimientoActual() * 0.6f));
+            mover();
+        }
+        else
+        {
+            setVelocidadX(0.0f);
+            setVelocidadY(0.0f);
+        }
     }
     else
     {
-        setVelocidadX(0.0f);
-        setVelocidadY(0.0f);
+        estado = PERSIGUIENDO;
+        const float objetivoX = jugadorObjetivoX - 180.0f;
+        const float objetivoY = jugadorObjetivoY - 10.0f;
+        const float deltaX = objetivoX - getX();
+        const float deltaY = objetivoY - getY();
+        const float distanciaObjetivo = std::sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        if(distanciaObjetivo > 4.0f && distanciaObjetivo > 0.0f)
+        {
+            setVelocidadX((deltaX / distanciaObjetivo) * ia->getVelocidadMovimientoActual());
+            setVelocidadY((deltaY / distanciaObjetivo) * (ia->getVelocidadMovimientoActual() * 0.55f));
+            mover();
+        }
+        else
+        {
+            setVelocidadX(0.0f);
+            setVelocidadY(0.0f);
+        }
     }
 }
 
@@ -227,10 +288,10 @@ void Enemigo::actualizarProyectiles()
         gravedadProyectiles.aplicar(&proyectil);
         proyectil.actualizar();
 
-        if(proyectil.getX() < -300.0f ||
-            proyectil.getX() > 6000.0f ||
-            proyectil.getY() < -200.0f ||
-            proyectil.getY() > 1400.0f)
+        if(proyectil.getX() < -600.0f ||
+            proyectil.getX() > 15000.0f ||
+            proyectil.getY() < -300.0f ||
+            proyectil.getY() > 1800.0f)
         {
             proyectil.desactivar();
         }
@@ -268,21 +329,6 @@ void Enemigo::lanzarProyectilDireccionado(float direccionX, float direccionY, fl
                              danio);
 }
 
-void Enemigo::lanzarSalvaRadial()
-{
-    const int cantidad = 8;
-    const float pi = 3.14159265f;
-    const float velocidad = ia ? ia->getVelocidadProyectilActual() : 5.0f;
-
-    for(int i = 0; i < cantidad; ++i)
-    {
-        const float angulo = (2.0f * pi * i) / cantidad;
-        const float dx = std::cos(angulo);
-        const float dy = std::sin(angulo);
-        proyectiles.emplace_back(getX(), getY(), dx, dy, velocidad, danio + 10);
-    }
-}
-
 void Enemigo::recibirDanio(int cantidad)
 {
     if(invulnerable || cantidad <= 0)
@@ -310,6 +356,12 @@ void Enemigo::setVelocidades(float movimiento, float embiste)
     velocidadEmbiste = embiste;
 }
 
+void Enemigo::consumirDecisionIA()
+{
+    if(ia)
+        ia->consumirDecision();
+}
+
 TipoEnemigo Enemigo::getTipo() const
 {
     return tipo;
@@ -318,6 +370,11 @@ TipoEnemigo Enemigo::getTipo() const
 EstadoEnemigo Enemigo::getEstado() const
 {
     return estado;
+}
+
+AtaqueIA Enemigo::getAtaqueIA() const
+{
+    return ia ? ia->getAtaqueActual() : AtaqueIA::ATAQUE_NINGUNO;
 }
 
 int Enemigo::getVida() const

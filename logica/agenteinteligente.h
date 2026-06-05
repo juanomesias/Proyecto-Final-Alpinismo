@@ -3,21 +3,26 @@
 
 #include <vector>
 
-enum EstadoIA
+enum class EstadoIA
 {
     OBSERVANDO,
+    PERSIGUIENDO,
     DISPARANDO,
+    OSCILANDO,
+    ACELERANDO_CAZA,
+    INVOCANDO_APOYO,
     GOLPE_GIRATORIO,
-    RECUPERANDO_IA,
-    SALVA_RADIAL
+    RECUPERANDO_IA
 };
 
-enum AtaqueIA
+enum class AtaqueIA
 {
     ATAQUE_NINGUNO,
-    ATAQUE_PROYECTIL,
+    ATAQUE_PROYECTIL_PREDICTIVO,
+    ATAQUE_OSCILATORIO,
+    ATAQUE_ACELERAR_CAZA,
+    ATAQUE_INVOCAR_APOYO,
     ATAQUE_GIRO,
-    ATAQUE_SALVA_RADIAL
 };
 
 class AgenteInteligente
@@ -27,6 +32,8 @@ private:
     float yEnemigo;
     float xJugador;
     float yJugador;
+    float velocidadJugadorX;
+    float velocidadJugadorY;
     float distanciaJugador;
 
     int vidaMaxima;
@@ -34,16 +41,19 @@ private:
 
     bool faseDos;
     bool invulnerable;
-    bool salvaEjecutada;
+    bool jugadorEnAire;
+    bool jugadorProtegiendo;
+    bool jugadorAtacando;
+    bool modoDuelo;
 
-    float tiempoDesdeUltimoDisparo;
+    float tiempoDesdeUltimaDecision;
     float tiempoEnAtaque;
     float tiempoEnVulnerable;
 
-    float intervaloDisparo;
+    float intervaloDecisionBase;
+    float intervaloDecisionActual;
     float duracionGiro;
     float duracionVulnerable;
-    float duracionSalva;
     float rangoGiro;
 
     float velocidadMovimientoBase;
@@ -56,9 +66,17 @@ private:
     EstadoIA estadoActual;
     AtaqueIA ataqueActual;
     std::vector<float> historialDistancias;
+    std::vector<float> historialSaltos;
+    std::vector<float> historialDefensa;
+    std::vector<float> historialAtaque;
+    float preferenciaAerea;
+    float preferenciaDefensiva;
+    float preferenciaOfensiva;
 
     void calcularDistancia();
     void activarFaseDos();
+    void calcularDireccionPredictiva(float tiempoProyeccion);
+    void actualizarPreferencias();
 
 public:
     AgenteInteligente(int vidaMaxima = 100);
@@ -67,6 +85,12 @@ public:
                   float yEnemigo,
                   float xJugador,
                   float yJugador,
+                  float velocidadJugadorX,
+                  float velocidadJugadorY,
+                  bool jugadorEnAire,
+                  bool jugadorProtegiendo,
+                  bool jugadorAtacando,
+                  bool modoDuelo,
                   int vidaActual);
     void razonar();
     void actuar(float deltaTiempo);
@@ -78,17 +102,18 @@ public:
 
     bool estaEnFaseDos() const;
     bool estaInvulnerable() const;
-    bool fueSalvaEjecutada() const;
 
     float getDistanciaJugador() const;
     float getVelocidadMovimientoActual() const;
     float getVelocidadProyectilActual() const;
     float getDireccionProyectilX() const;
     float getDireccionProyectilY() const;
-    float getIntervaloDisparo() const;
+    float getIntervaloDecision() const;
     float getDuracionGiro() const;
     float getDuracionVulnerable() const;
+    float getPreferenciaAerea() const;
+    float getPreferenciaDefensiva() const;
+    float getPreferenciaOfensiva() const;
 };
 
 #endif // AGENTEINTELIGENTE_H
-
