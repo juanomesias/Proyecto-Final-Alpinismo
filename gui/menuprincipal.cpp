@@ -46,7 +46,7 @@ void iniciarMusicaMenuNivel1()
         musicaNivel1 = new QMediaPlayer;
         salidaMusicaNivel1 = new QAudioOutput;
         musicaNivel1->setAudioOutput(salidaMusicaNivel1);
-        salidaMusicaNivel1->setVolume(0.25f);
+        salidaMusicaNivel1->setVolume(0.1625f);
         musicaNivel1->setSource(QUrl::fromLocalFile(rutaRecurso("sounds/nivel1.mp3")));
         musicaNivel1->setLoops(QMediaPlayer::Infinite);
     }

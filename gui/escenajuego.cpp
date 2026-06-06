@@ -24,8 +24,12 @@ static const int ALTO_PANTALLA  = 600;
 static const int NUM_FONDOS     = 11;
 static const int FONDOS_RUNNER  = 3;
 static const int FONDOS_ESCALADA = 8;
-static const int CANTIDAD_PIEDRAS = 8;
 static const QString RUTA_RECURSOS = "D:/ProyectFinal/Proyecto-Final-Alpinismo/codigo/resources/";
+
+static int cantidadPiedrasNivel1(int dificultad)
+{
+    return dificultad == 2 ? 11 : 4;
+}
 
 static QString rutaRecurso(const QString& nombreArchivo)
 {
@@ -229,6 +233,7 @@ EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
     spritePatrulleroNivel2 = quitarFondoAzul(rutaRecurso("patrullero.png"));
     spriteVigilanteNivel2 = quitarFondoNegro(QPixmap(rutaRecurso("vigilante.png")));
     spriteObstaculoNivel2 = quitarFondoAzul(rutaRecurso("obstaculo2.png"));
+    spriteMuroNivel2 = quitarFondoNegro(QPixmap(rutaRecurso("muro.png")));
     spritePortal = hojaSprites2.copy(1235, 430, 405, 385).scaled(
         150, 155, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePortalGuia = quitarFondoNegro(hojaSprites2.copy(450, 505, 270, 335)).scaled(
@@ -775,6 +780,29 @@ void EscenaJuego::limpiarEntidadesSecundariasNivel2()
     perseguidorNivel2.getProyectiles().clear();
 }
 
+QPixmap EscenaJuego::crearSpriteMuroNivel2() const
+{
+    const int anchoMuro = 56;
+    QPixmap muro(anchoMuro, ALTO_PANTALLA);
+    muro.fill(Qt::transparent);
+
+    if(spriteMuroNivel2.isNull())
+    {
+        muro.fill(QColor(95, 20, 18));
+        return muro;
+    }
+
+    QPixmap pieza = spriteMuroNivel2.scaledToWidth(anchoMuro, Qt::SmoothTransformation);
+    if(pieza.isNull())
+        return muro;
+
+    QPainter pintor(&muro);
+    for(int y = 0; y < ALTO_PANTALLA; y += pieza.height())
+        pintor.drawPixmap(0, y, pieza);
+
+    return muro;
+}
+
 void EscenaJuego::iniciarDueloFinalNivel2()
 {
     faseNivel2 = FaseNivel2::DueloFinal;
@@ -1176,10 +1204,17 @@ void EscenaJuego::sincronizarVisualesEnemigosNivel2()
         {
             barreraIAVisual->setVisible(true);
             barreraIAVisual->setRect(0, 0, std::max(0.0f, fronteraIANivel2), ALTO_PANTALLA);
+            if(barreraMuroNivel2Visual)
+            {
+                barreraMuroNivel2Visual->setVisible(true);
+                barreraMuroNivel2Visual->setPos(std::max(0.0f, fronteraIANivel2), 0.0f);
+            }
         }
         else
         {
             barreraIAVisual->setVisible(false);
+            if(barreraMuroNivel2Visual)
+                barreraMuroNivel2Visual->setVisible(false);
         }
     }
 
@@ -1433,50 +1468,29 @@ void EscenaJuego::construirMundo(int mundoAlto)
         return pisoBaseY + yLocal;
     };
 
-    auto YEscalada = [&](int fondo, float yLocal) -> float
-    {
-        return pisoBaseY - ALTO_PANTALLA * (fondo - FONDOS_RUNNER) + yLocal;
-    };
-
-    auto XEscalada = [&](float xLocal) -> float
-    {
-        return columnaEscaladaX + xLocal;
-    };
-
-    // Fondos 1, 2 y 3: recorrido horizontal.
-    agregarPiso(0, YBase(550), ANCHO_PANTALLA * FONDOS_RUNNER, 50);
-
     QPixmap arbol = quitarFondoNegro(QPixmap(rutaRecurso("arbol.png"))).scaled(
         190, 160, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     QGraphicsPixmapItem* arbolDecorativo = escena->addPixmap(arbol);
     arbolDecorativo->setPos(95, YBase(390));
     arbolDecorativo->setZValue(6);
 
-    // Fondo 3: primeras plataformas para empezar a subir.
-    agregarPlataforma(XEscalada(590), YBase(450), 130, 25);
-    agregarPlataforma(XEscalada(410), YBase(350), 130, 25);
-    agregarPlataformaResbalosa(XEscalada(560), YBase(315), 150, 25);
-    agregarPlataforma(XEscalada(230), YBase(250), 130, 25);
-    agregarPlataforma(XEscalada(80),  YBase(150), 130, 25);
-    agregarPlataformaResbalosa(XEscalada(530), YBase(130), 150, 25);
-    agregarPlataforma(XEscalada(360), YBase(50),  130, 25);
+    const std::vector<PlataformaNivel1> plataformasNivel1 =
+        NivelPlataforma::crearPlataformasNivel1(dificultad,
+                                                ANCHO_PANTALLA,
+                                                FONDOS_RUNNER,
+                                                ALTO_PANTALLA,
+                                                mundoAlto);
 
-    // Desde aqui cada fondo queda encima del anterior.
-    for(int fondo = 4; fondo <= 11; fondo++)
+    for(const PlataformaNivel1& entrada : plataformasNivel1)
     {
-        const bool derecha = (fondo % 2 == 0);
-
-        agregarPlataforma(XEscalada(derecha ? 120 : 550), YEscalada(fondo, 550), 140, 25);
-        agregarPlataforma(XEscalada(derecha ? 340 : 330), YEscalada(fondo, 450), 140, 25);
-        agregarPlataforma(XEscalada(derecha ? 560 : 110), YEscalada(fondo, 350), 140, 25);
-        agregarPlataforma(XEscalada(derecha ? 360 : 350), YEscalada(fondo, 250), 140, 25);
-        agregarPlataforma(XEscalada(derecha ? 130 : 560), YEscalada(fondo, 150), 140, 25);
-        agregarPlataformaResbalosa(XEscalada(derecha ? 560 : 120), YEscalada(fondo, 95), 150, 25);
-        agregarPlataforma(XEscalada(derecha ? 430 : 250), YEscalada(fondo, 50),  140, 25);
+        const Plataforma& plataforma = entrada.plataforma;
+        if(entrada.piso)
+            agregarPiso(plataforma.getX(), plataforma.getY(), plataforma.getAncho(), plataforma.getAlto());
+        else if(entrada.resbalosa)
+            agregarPlataformaResbalosa(plataforma.getX(), plataforma.getY(), plataforma.getAncho(), plataforma.getAlto());
+        else
+            agregarPlataforma(plataforma.getX(), plataforma.getY(), plataforma.getAncho(), plataforma.getAlto());
     }
-
-    // Final1 queda arriba de la escalada: medio piso para salir de la imagen 11 y caminar a la meta.
-    agregarPiso(columnaEscaladaX + 300, 560, 500, 50);
 
     meta = escena->addPixmap(spritePortal);
     meta->setPos(columnaEscaladaX + 620, 415);
@@ -1497,6 +1511,7 @@ void EscenaJuego::limpiarPlataformas()
 
     plataformasVisuales.clear();
     plataformas.clear();
+    plataformasResbalosas.clear();
 }
 
 void EscenaJuego::limpiarObstaculos()
@@ -1521,7 +1536,7 @@ void EscenaJuego::configurarAudio()
     musica = new QMediaPlayer(this);
     salidaMusica = new QAudioOutput(this);
     musica->setAudioOutput(salidaMusica);
-    salidaMusica->setVolume(0.15f);
+    salidaMusica->setVolume(0.1625f);
 
     sonidoDanio = new QMediaPlayer(this);
     salidaDanio = new QAudioOutput(this);
@@ -1604,6 +1619,7 @@ void EscenaJuego::construirNivel2()
     botonSalirVisual = nullptr;
     perseguidorNivel2Visual = nullptr;
     barreraIAVisual = nullptr;
+    barreraMuroNivel2Visual = nullptr;
     ataqueNivel2Visual = nullptr;
     muroArenaIzquierdoNivel2Visual = nullptr;
     muroArenaDerechoNivel2Visual = nullptr;
@@ -1614,12 +1630,22 @@ void EscenaJuego::construirNivel2()
     inicioArenaFinalNivel2 = nivelRunner.getInicioDueloFinal();
     finArenaFinalNivel2 = nivelRunner.getFinDueloFinal();
 
-    escena->setSceneRect(0, 0, ANCHO_PANTALLA * 8.0f, ALTO_PANTALLA);
+    escena->setSceneRect(0, 0, finArenaFinalNivel2 + 420.0f, ALTO_PANTALLA);
 
-    for(int i = 0; i < 8; i++)
+    QStringList fondosNivel2;
+    for(int i = 1; i <= 9; i++)
     {
-        const int indiceFondo = i + 1;
-        QString nombreFondo = QString("fondo_nivel2_%1.png").arg(indiceFondo);
+        const QString nombreFondo = QString("fondo_nivel2_%1.png").arg(i);
+        if(QFileInfo::exists(rutaRecurso(nombreFondo)))
+            fondosNivel2.push_back(nombreFondo);
+    }
+    if(fondosNivel2.empty())
+        fondosNivel2.push_back("fondo_nivel2_1.png");
+
+    const int cantidadFondos = static_cast<int>(std::ceil(escena->sceneRect().width() / ANCHO_PANTALLA));
+    for(int i = 0; i < cantidadFondos; i++)
+    {
+        const QString nombreFondo = fondosNivel2[i % fondosNivel2.size()];
         QPixmap fondo(rutaRecurso(nombreFondo));
         if(fondo.isNull())
             fondo.load(rutaRecurso("fondo_nivel2_1.png"));
@@ -1681,6 +1707,9 @@ void EscenaJuego::construirNivel2()
                                       QBrush(QColor(159, 33, 24, 95)));
     barreraIAVisual->setZValue(-10);
 
+    barreraMuroNivel2Visual = escena->addPixmap(crearSpriteMuroNivel2());
+    barreraMuroNivel2Visual->setZValue(16);
+
     muroArenaIzquierdoNivel2Visual = escena->addRect(0, 0, 36, ALTO_PANTALLA,
                                                      QPen(Qt::NoPen),
                                                      QBrush(QColor(60, 18, 14)));
@@ -1710,7 +1739,8 @@ void EscenaJuego::construirNivel2()
     jugador.setVelocidadX(0);
     jugador.setVelocidadY(0);
     jugador.setEnSuelo(true);
-    tiempoInvulnerabilidadJugador.invalidate();
+    inmunidadInicioNivel2 = true;
+    tiempoInvulnerabilidadJugador.restart();
     teclaIzquierdaPresionada = false;
     teclaDerechaPresionada = false;
     ataqueNivel2Activo = false;
@@ -1793,7 +1823,6 @@ void EscenaJuego::cambiarANivel2()
     protegiendo = false;
     tipoImpacto = 0;
     potenciadorActivo = false;
-    tiempoInvulnerabilidadJugador.invalidate();
     construirNivel2();
     detenerMusicaMenuNivel1();
     reproducirMusicaNivel2();
@@ -1803,11 +1832,13 @@ void EscenaJuego::recibirDanio(int cantidad)
 {
     if(juegoTerminado || cantidad <= 0) return;
 
-    if(nivelJuego == 2 &&
-        tiempoInvulnerabilidadJugador.isValid() &&
-        tiempoInvulnerabilidadJugador.elapsed() < 1000)
+    if(nivelJuego == 2 && tiempoInvulnerabilidadJugador.isValid())
     {
-        return;
+        const qint64 duracionInmunidad = inmunidadInicioNivel2 ? 3000 : 1000;
+        if(tiempoInvulnerabilidadJugador.elapsed() < duracionInmunidad)
+            return;
+
+        inmunidadInicioNivel2 = false;
     }
 
     vidaJugador = std::max(0, vidaJugador - cantidad);
@@ -1816,7 +1847,10 @@ void EscenaJuego::recibirDanio(int cantidad)
     reproducirSonidoDanio();
 
     if(nivelJuego == 2)
+    {
+        inmunidadInicioNivel2 = false;
         tiempoInvulnerabilidadJugador.restart();
+    }
 
     if(vidaJugador <= 0)
     {
@@ -1884,6 +1918,7 @@ void EscenaJuego::reiniciarNivelActual()
     jugador.setVelocidadX(0);
     jugador.setVelocidadY(0);
     jugador.setEnSuelo(true);
+    jugador.desactivarVelocidad();
     protegiendo = false;
     bajarPlataformaNivel2 = false;
     potenciadorActivo = false;
@@ -1893,7 +1928,12 @@ void EscenaJuego::reiniciarNivelActual()
     teclaDerechaPresionada = false;
     ataqueNivel2Activo = false;
     golpeJefeAplicadoAtaqueNivel2 = false;
+    inmunidadInicioNivel2 = false;
     tiempoInvulnerabilidadJugador.invalidate();
+    if(relojVisual)
+        relojVisual->setVisible(false);
+    if(ataqueNivel2Visual)
+        ataqueNivel2Visual->setVisible(false);
 
     if(nivelJuego == 2)
     {
@@ -2097,7 +2137,7 @@ void EscenaJuego::crearPiedras()
     spritesPiedras.push_back(piedra2.scaled(55, 55, Qt::KeepAspectRatio,
                                             Qt::SmoothTransformation));
 
-    for(int i = 0; i < CANTIDAD_PIEDRAS; i++)
+    for(int i = 0; i < cantidadPiedrasNivel1(dificultad); i++)
     {
         QGraphicsPixmapItem* piedra = escena->addPixmap(spritesPiedras[i % spritesPiedras.size()]);
         piedra->setZValue(12);
@@ -2126,7 +2166,8 @@ void EscenaJuego::reiniciarPiedra(int indice)
 
     piedrasVisuales[indice]->setPixmap(spritesPiedras[spriteIndice]);
     piedrasVisuales[indice]->setPos(x, y);
-    velocidadesPiedras[indice] = 3.0f + QRandomGenerator::global()->bounded(3);
+    const float velocidadBase = dificultad == 2 ? 3.7f : 2.3f;
+    velocidadesPiedras[indice] = velocidadBase + QRandomGenerator::global()->bounded(3);
 }
 
 void EscenaJuego::actualizarPiedras()
@@ -2262,7 +2303,7 @@ void EscenaJuego::actualizarJuego()
         {
             if(estabaCayendo)
             {
-                if(nivelJuego != 2)
+                if(nivelJuego == 1 && dificultad == 2)
                 {
                     const float distanciaCaida = p.getY() - inicioCaidaY;
                     if(distanciaCaida >= 700)

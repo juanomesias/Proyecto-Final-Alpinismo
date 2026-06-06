@@ -22,6 +22,7 @@
 #include "../logica/meta.h"
 #include "../logica/enemigo.h"
 #include "../logica/nivelrunner.h"
+#include "../logica/nivelplataforma.h"
 #include "../fisica/movimientoparabolico.h"
 #include "../fisica/movimientooscilatorio.h"
 #include "../fisica/efectofriccion.h"
@@ -147,6 +148,7 @@ private:
     void iniciarAtaqueAltoJefeNivel2();
     void actualizarAtaqueAltoJefeNivel2(float deltaTiempo);
     void limpiarEntidadesSecundariasNivel2();
+    QPixmap crearSpriteMuroNivel2() const;
     void actualizarAtaqueNivel2();
     void iniciarAtaqueNivel2();
     QRectF obtenerAreaAtaqueNivel2() const;
@@ -197,6 +199,7 @@ private:
     QPixmap spritePatrulleroNivel2;
     QPixmap spriteVigilanteNivel2;
     QPixmap spriteObstaculoNivel2;
+    QPixmap spriteMuroNivel2;
     QTimer* timer;
 
     Jugador              jugador;
@@ -225,6 +228,7 @@ private:
     std::vector<QGraphicsPixmapItem*>  ondasOscilatoriasNivel2Visuales;
     QGraphicsPixmapItem* perseguidorNivel2Visual = nullptr;
     QGraphicsRectItem* barreraIAVisual = nullptr;
+    QGraphicsPixmapItem* barreraMuroNivel2Visual = nullptr;
     QGraphicsPixmapItem* ataqueNivel2Visual = nullptr;
     QGraphicsRectItem* muroArenaIzquierdoNivel2Visual = nullptr;
     QGraphicsRectItem* muroArenaDerechoNivel2Visual = nullptr;
@@ -258,6 +262,7 @@ private:
     bool teclaIzquierdaPresionada = false;
     bool teclaDerechaPresionada = false;
     bool ataqueNivel2Activo = false;
+    bool inmunidadInicioNivel2 = false;
     bool bajarPlataformaNivel2 = false;
     bool golpeJefeAplicadoAtaqueNivel2 = false;
     FaseNivel2 faseNivel2 = FaseNivel2::Runner;
