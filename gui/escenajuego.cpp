@@ -704,13 +704,18 @@ void EscenaJuego::iniciarDueloFinalNivel2()
                                 392.0f,
                                 JEFE,
                                 220,
-                                dificultad == 2 ? 18 : 14);
+                                75);
     golpesJefeNivel2 = 0;
     siguienteRafagaJefeNivel2 = 10;
     proyectilesRafagaJefeNivel2 = 0;
     tiempoAtaqueJefeNivel2 = 0.0f;
     tiempoRafagaJefeNivel2 = 0.0f;
+    tiempoAtaqueAltoJefeNivel2 = 0.0f;
+    duracionAtaqueAltoJefeNivel2 = 0.0f;
+    tiempoDisparoAltoJefeNivel2 = 0.0f;
+    proyectilesAtaqueAltoJefeNivel2 = 0;
     jefeRafagaCentralNivel2 = false;
+    jefeAtaqueAltoNivel2 = false;
     elegirNuevaPosicionJefeNivel2();
 
     if(meta)
@@ -781,6 +786,7 @@ void EscenaJuego::elegirNuevaPosicionJefeNivel2()
     objetivoJefeNivel2Y = static_cast<float>(destino.y());
     jefeReposicionandoNivel2 = true;
     jefeRafagaCentralNivel2 = false;
+    jefeAtaqueAltoNivel2 = false;
 }
 
 void EscenaJuego::lanzarRafagaCentralJefeNivel2()
@@ -803,6 +809,61 @@ void EscenaJuego::lanzarRafagaCentralJefeNivel2()
                                 dificultad == 2 ? 16 : 12);
 }
 
+void EscenaJuego::iniciarAtaqueAltoJefeNivel2()
+{
+    objetivoJefeNivel2X = inicioArenaFinalNivel2 + 180.0f +
+                          QRandomGenerator::global()->bounded(
+                              std::max(1, static_cast<int>(finArenaFinalNivel2 - inicioArenaFinalNivel2 - 360.0f)));
+    objetivoJefeNivel2Y = 72.0f;
+    jefeAtaqueAltoNivel2 = true;
+    jefeReposicionandoNivel2 = false;
+    jefeRafagaCentralNivel2 = false;
+    tiempoAtaqueAltoJefeNivel2 = 0.0f;
+    duracionAtaqueAltoJefeNivel2 = 0.0f;
+    tiempoDisparoAltoJefeNivel2 = 0.0f;
+    proyectilesAtaqueAltoJefeNivel2 = 0;
+}
+
+void EscenaJuego::actualizarAtaqueAltoJefeNivel2(float deltaTiempo)
+{
+    const float dx = objetivoJefeNivel2X - perseguidorNivel2.getX();
+    const float dy = objetivoJefeNivel2Y - perseguidorNivel2.getY();
+    const float distancia = std::sqrt(dx * dx + dy * dy);
+
+    if(distancia > 5.0f)
+    {
+        const float velocidad = 4.6f;
+        perseguidorNivel2.setX(perseguidorNivel2.getX() + (dx / distancia) * velocidad);
+        perseguidorNivel2.setY(perseguidorNivel2.getY() + (dy / distancia) * velocidad);
+        return;
+    }
+
+    perseguidorNivel2.setX(objetivoJefeNivel2X);
+    perseguidorNivel2.setY(objetivoJefeNivel2Y);
+    duracionAtaqueAltoJefeNivel2 += deltaTiempo;
+    tiempoDisparoAltoJefeNivel2 += deltaTiempo;
+
+    if(tiempoDisparoAltoJefeNivel2 >= 0.22f && proyectilesAtaqueAltoJefeNivel2 < 14)
+    {
+        const float anchoArena = finArenaFinalNivel2 - inicioArenaFinalNivel2 - 120.0f;
+        const float objetivoX = inicioArenaFinalNivel2 + 60.0f +
+                                QRandomGenerator::global()->bounded(
+                                    std::max(1, static_cast<int>(anchoArena)));
+        const float objetivoY = 500.0f;
+        perseguidorNivel2.lanzarProyectilDireccionado(objetivoX - perseguidorNivel2.getX(),
+                                                      objetivoY - perseguidorNivel2.getY(),
+                                                      0.9f);
+        tiempoDisparoAltoJefeNivel2 = 0.0f;
+        proyectilesAtaqueAltoJefeNivel2++;
+    }
+
+    if(proyectilesAtaqueAltoJefeNivel2 >= 14 && duracionAtaqueAltoJefeNivel2 >= 3.6f)
+    {
+        tiempoAtaqueAltoJefeNivel2 = 0.0f;
+        elegirNuevaPosicionJefeNivel2();
+    }
+}
+
 void EscenaJuego::actualizarDueloFinalNivel2(float deltaTiempo, bool jugadorEnAireAhora)
 {
     jugador.setX(std::clamp(jugador.getX(),
@@ -818,6 +879,23 @@ void EscenaJuego::actualizarDueloFinalNivel2(float deltaTiempo, bool jugadorEnAi
                                       ataqueNivel2Activo,
                                       true);
     perseguidorNivel2.actualizarProyectiles();
+
+    if(!jefeAtaqueAltoNivel2)
+        tiempoAtaqueAltoJefeNivel2 += deltaTiempo;
+
+    if(!jefeAtaqueAltoNivel2 &&
+        !jefeRafagaCentralNivel2 &&
+        !jefeReposicionandoNivel2 &&
+        tiempoAtaqueAltoJefeNivel2 >= 8.0f)
+    {
+        iniciarAtaqueAltoJefeNivel2();
+    }
+
+    if(jefeAtaqueAltoNivel2)
+    {
+        actualizarAtaqueAltoJefeNivel2(deltaTiempo);
+        return;
+    }
 
     if(jefeRafagaCentralNivel2)
     {
@@ -1076,6 +1154,10 @@ void EscenaJuego::actualizarNivel2()
             actualizarHud();
             return;
         }
+
+        const QRectF rectJefe(perseguidorNivel2.getX(), perseguidorNivel2.getY(), 68.0f, 68.0f);
+        if(!jefeAtaqueAltoNivel2 && rectJefe.intersects(jugadorRect))
+            recibirImpactoObjeto(75);
     }
 
     for(Proyectil& proyectil : perseguidorNivel2.getProyectiles())
@@ -1202,7 +1284,11 @@ void EscenaJuego::actualizarNivel2()
         }
         else if(faseNivel2 == FaseNivel2::DueloFinal)
         {
-            if(jefeRafagaCentralNivel2)
+            if(jefeAtaqueAltoNivel2)
+            {
+                estadoIA = "Ataque alto: proyectiles al piso";
+            }
+            else if(jefeRafagaCentralNivel2)
             {
                 estadoIA = "Patron central: busca huecos entre disparos";
             }
@@ -1489,6 +1575,7 @@ void EscenaJuego::construirNivel2()
     jugador.setVelocidadX(0);
     jugador.setVelocidadY(0);
     jugador.setEnSuelo(true);
+    tiempoInvulnerabilidadJugador.invalidate();
     teclaIzquierdaPresionada = false;
     teclaDerechaPresionada = false;
     ataqueNivel2Activo = false;
@@ -1502,11 +1589,16 @@ void EscenaJuego::construirNivel2()
     objetivoJefeNivel2Y = 0.0f;
     tiempoAtaqueJefeNivel2 = 0.0f;
     tiempoRafagaJefeNivel2 = 0.0f;
+    tiempoAtaqueAltoJefeNivel2 = 0.0f;
+    duracionAtaqueAltoJefeNivel2 = 0.0f;
+    tiempoDisparoAltoJefeNivel2 = 0.0f;
     golpesJefeNivel2 = 0;
     siguienteRafagaJefeNivel2 = 10;
     proyectilesRafagaJefeNivel2 = 0;
+    proyectilesAtaqueAltoJefeNivel2 = 0;
     jefeReposicionandoNivel2 = false;
     jefeRafagaCentralNivel2 = false;
+    jefeAtaqueAltoNivel2 = false;
 
     int enemigosEnPlataformas = 0;
     for(const Plataforma& plataformaNivel2 : plataformas)
@@ -1566,6 +1658,7 @@ void EscenaJuego::cambiarANivel2()
     protegiendo = false;
     tipoImpacto = 0;
     potenciadorActivo = false;
+    tiempoInvulnerabilidadJugador.invalidate();
     construirNivel2();
     detenerMusicaMenuNivel1();
     reproducirMusicaNivel2();
@@ -1575,6 +1668,13 @@ void EscenaJuego::recibirDanio(int cantidad)
 {
     if(juegoTerminado || cantidad <= 0) return;
 
+    if(nivelJuego == 2 &&
+        tiempoInvulnerabilidadJugador.isValid() &&
+        tiempoInvulnerabilidadJugador.elapsed() < 1000)
+    {
+        return;
+    }
+
     int cantidadAplicada = cantidad;
     if(nivelJuego == 2)
         cantidadAplicada = std::max(1, static_cast<int>(std::ceil(cantidad / 3.0f)));
@@ -1583,6 +1683,9 @@ void EscenaJuego::recibirDanio(int cantidad)
     jugador.setVida(vidaJugador);
     actualizarVidaVisual();
     reproducirSonidoDanio();
+
+    if(nivelJuego == 2)
+        tiempoInvulnerabilidadJugador.restart();
 
     if(vidaJugador <= 0)
     {
@@ -1660,6 +1763,7 @@ void EscenaJuego::reiniciarNivelActual()
     teclaDerechaPresionada = false;
     ataqueNivel2Activo = false;
     golpeJefeAplicadoAtaqueNivel2 = false;
+    tiempoInvulnerabilidadJugador.invalidate();
 
     if(nivelJuego == 2)
     {
@@ -1732,32 +1836,35 @@ void EscenaJuego::crearCuraciones()
 {
     if(spriteCuracion.isNull() || plataformas.empty()) return;
 
-    std::vector<int> indices;
-
     if(nivelJuego == 2)
     {
-        for(int i = 0; i < static_cast<int>(plataformas.size()); ++i)
-        {
-            const Plataforma& plataforma = plataformas[i];
-            if(plataforma.getAlto() < 70.0f &&
-                plataforma.getX() > 850.0f &&
-                plataforma.getX() < inicioArenaFinalNivel2 - 500.0f &&
-                i % 7 == 0)
-            {
-                indices.push_back(i);
-            }
-
-            if(indices.size() >= 6)
-                break;
-        }
-    }
-    else
-    {
-        indices = {
-            std::min(14, static_cast<int>(plataformas.size()) - 1),
-            std::min(44, static_cast<int>(plataformas.size()) - 1)
+        const std::vector<QPointF> posiciones = {
+            QPointF(980.0f, 462.0f),
+            QPointF(1900.0f, 362.0f),
+            QPointF(2840.0f, 307.0f),
+            QPointF(3920.0f, 422.0f),
+            QPointF(5480.0f, 362.0f),
+            QPointF(7020.0f, 307.0f),
+            QPointF(8560.0f, 422.0f),
+            QPointF(10100.0f, 462.0f)
         };
+
+        for(const QPointF& posicion : posiciones)
+        {
+            QGraphicsPixmapItem* curacion = escena->addPixmap(spriteCuracion);
+            curacion->setPos(posicion.x() - spriteCuracion.width() / 2.0f,
+                             posicion.y() - spriteCuracion.height());
+            curacion->setZValue(24);
+            curacionesVisuales.push_back(curacion);
+        }
+
+        return;
     }
+
+    const std::vector<int> indices = {
+        std::min(14, static_cast<int>(plataformas.size()) - 1),
+        std::min(44, static_cast<int>(plataformas.size()) - 1)
+    };
 
     for(int indice : indices)
     {
@@ -2076,11 +2183,22 @@ void EscenaJuego::actualizarJuego()
                                 columnaEscaladaX + ANCHO_PANTALLA - 50.0f));
     }
 
+    if(nivelJuego == 2 && jugador.getY() >= limiteMundo.bottom() - 50)
+    {
+        vidaJugador = 0;
+        jugador.setVida(vidaJugador);
+        actualizarVidaVisual();
+        if(timer) timer->stop();
+        juegoTerminado = true;
+        reproducirSonidoMuerte();
+        mostrarPantallaMuerte();
+        actualizarHud();
+        return;
+    }
+
     if(jugador.getY() > limiteMundo.bottom() - 50)
     {
-        if(nivelJuego != 2)
-            recibirDanio(50);
-
+        recibirDanio(50);
         jugador.setY(limiteMundo.bottom() - 50);
         jugador.setVelocidadY(0);
         jugador.setEnSuelo(true);

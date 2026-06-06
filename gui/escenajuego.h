@@ -143,6 +143,8 @@ private:
     void actualizarDueloFinalNivel2(float deltaTiempo, bool jugadorEnAireAhora);
     void elegirNuevaPosicionJefeNivel2();
     void lanzarRafagaCentralJefeNivel2();
+    void iniciarAtaqueAltoJefeNivel2();
+    void actualizarAtaqueAltoJefeNivel2(float deltaTiempo);
     void limpiarEntidadesSecundariasNivel2();
     void actualizarAtaqueNivel2();
     void iniciarAtaqueNivel2();
@@ -257,13 +259,19 @@ private:
     float objetivoJefeNivel2Y = 0.0f;
     float tiempoAtaqueJefeNivel2 = 0.0f;
     float tiempoRafagaJefeNivel2 = 0.0f;
+    float tiempoAtaqueAltoJefeNivel2 = 0.0f;
+    float duracionAtaqueAltoJefeNivel2 = 0.0f;
+    float tiempoDisparoAltoJefeNivel2 = 0.0f;
     int golpesJefeNivel2 = 0;
     int siguienteRafagaJefeNivel2 = 10;
     int proyectilesRafagaJefeNivel2 = 0;
+    int proyectilesAtaqueAltoJefeNivel2 = 0;
     bool jefeReposicionandoNivel2 = false;
     bool jefeRafagaCentralNivel2 = false;
+    bool jefeAtaqueAltoNivel2 = false;
     QElapsedTimer tiempoAtaqueNivel2;
     QElapsedTimer tiempoDanioNivel2;
+    QElapsedTimer tiempoInvulnerabilidadJugador;
 
     QMediaPlayer* musica = nullptr;
     QAudioOutput* salidaMusica = nullptr;
