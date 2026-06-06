@@ -27,7 +27,7 @@ AgenteInteligente::AgenteInteligente(int vidaMaxima)
     tiempoEnAtaque = 0.0f;
     tiempoEnVulnerable = 0.0f;
 
-    intervaloDecisionBase = 1.85f;
+    intervaloDecisionBase = 3.0f;
     intervaloDecisionActual = intervaloDecisionBase;
     duracionGiro = 1.65f;
     duracionVulnerable = 0.75f;
@@ -186,20 +186,20 @@ void AgenteInteligente::actuar(float deltaTiempo)
     {
         velocidadMovimientoActual = velocidadMovimientoBase * 1.35f;
         velocidadProyectilActual = velocidadProyectilBase * 1.25f;
-        intervaloDecisionActual = 1.05f;
+        intervaloDecisionActual = modoDuelo ? 1.8f : 2.75f;
     }
     else
     {
         velocidadMovimientoActual = velocidadMovimientoBase;
         velocidadProyectilActual = velocidadProyectilBase;
-        intervaloDecisionActual = intervaloDecisionBase;
+        intervaloDecisionActual = modoDuelo ? 2.0f : intervaloDecisionBase;
     }
 
     if(preferenciaAerea >= 0.55f)
         velocidadProyectilActual = std::max(velocidadProyectilActual, velocidadProyectilBase * 1.15f);
 
     if(preferenciaDefensiva >= 0.45f)
-        intervaloDecisionActual = std::min(intervaloDecisionActual, 0.95f);
+        intervaloDecisionActual = std::min(intervaloDecisionActual, modoDuelo ? 1.85f : 2.85f);
 
     if(estadoActual == EstadoIA::GOLPE_GIRATORIO)
     {
@@ -283,7 +283,7 @@ void AgenteInteligente::aprender()
 void AgenteInteligente::activarFaseDos()
 {
     faseDos = true;
-    intervaloDecisionActual = 1.0f;
+    intervaloDecisionActual = modoDuelo ? 1.8f : 2.75f;
     velocidadMovimientoActual = velocidadMovimientoBase * 1.35f;
     velocidadProyectilActual = velocidadProyectilBase * 1.25f;
 }

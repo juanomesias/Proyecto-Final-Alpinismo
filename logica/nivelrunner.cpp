@@ -4,8 +4,8 @@
 
 NivelRunner::NivelRunner()
 {
-    velocidadScroll = 3.2f;
-    velocidadPersecucion = 2.2f;
+    velocidadScroll = 2.8f;
+    velocidadPersecucion = 2.25f;
     tiempoTranscurrido = 0.0f;
     duracionTormenta = 18.0f;
     tormentaActiva = false;
@@ -23,13 +23,13 @@ void NivelRunner::actualizar()
 {
     if(tormentaActiva)
     {
-        velocidadScroll = std::min(4.4f, velocidadScroll + 0.0015f);
-        velocidadPersecucion = std::min(3.6f, velocidadPersecucion + 0.0014f);
+        velocidadScroll = std::min(3.85f, velocidadScroll + 0.0012f);
+        velocidadPersecucion = std::min(3.35f, velocidadPersecucion + 0.00135f);
     }
     else
     {
-        velocidadScroll = std::min(3.7f, velocidadScroll + 0.0005f);
-        velocidadPersecucion = std::min(2.8f, velocidadPersecucion + 0.0004f);
+        velocidadScroll = std::min(3.2f, velocidadScroll + 0.00035f);
+        velocidadPersecucion = std::min(2.75f, velocidadPersecucion + 0.00045f);
     }
 }
 
@@ -41,29 +41,33 @@ void NivelRunner::cargarNivel()
     float xBase = 0.0f;
     const float anchoSegmento = 820.0f;
     const float separacion = 120.0f;
+    const float alturas[3] = {430.0f, 370.0f, 315.0f};
 
     for(int i = 0; i < 14; ++i)
     {
         agregarPlataforma(Plataforma(xBase, 520, anchoSegmento, 80));
 
-        if(i % 2 == 0)
-            agregarPlataforma(Plataforma(xBase + 250.0f, 390.0f - (i % 3) * 25.0f, 190, 26));
-        else
-            agregarPlataforma(Plataforma(xBase + 410.0f, 345.0f + (i % 3) * 20.0f, 210, 26));
+        agregarPlataforma(Plataforma(xBase + 135.0f, alturas[i % 3], 205, 26));
+        agregarPlataforma(Plataforma(xBase + 430.0f, alturas[(i + 1) % 3], 220, 26));
 
-        if(i % 3 == 1)
-            agregarPlataforma(Plataforma(xBase + 110.0f, 300.0f, 150, 24));
+        if(i % 2 == 0)
+            agregarPlataforma(Plataforma(xBase + 650.0f, alturas[(i + 2) % 3], 165, 24));
 
         agregarObstaculo(Obstaculo(xBase + 300.0f, 470.0f, 18, 40, 40));
         if(i % 2 == 1)
             agregarObstaculo(Obstaculo(xBase + 620.0f, 470.0f, 22, 46, 46));
+        if(i % 3 == 0)
+            agregarObstaculo(Obstaculo(xBase + 205.0f, alturas[i % 3] - 38.0f, 14, 34, 38));
+        if(i % 4 == 2)
+            agregarObstaculo(Obstaculo(xBase + 505.0f, alturas[(i + 1) % 3] - 34.0f, 16, 32, 34));
 
         xBase += anchoSegmento + separacion;
     }
 
     agregarPlataforma(Plataforma(inicioDueloFinal, 520, finDueloFinal - inicioDueloFinal + 300.0f, 80));
-    agregarPlataforma(Plataforma(inicioDueloFinal + 260.0f, 360.0f, 230.0f, 24.0f));
-    agregarPlataforma(Plataforma(inicioDueloFinal + 860.0f, 330.0f, 220.0f, 24.0f));
+    agregarPlataforma(Plataforma(inicioDueloFinal + 190.0f, 420.0f, 230.0f, 24.0f));
+    agregarPlataforma(Plataforma(inicioDueloFinal + 560.0f, 360.0f, 230.0f, 24.0f));
+    agregarPlataforma(Plataforma(inicioDueloFinal + 900.0f, 315.0f, 220.0f, 24.0f));
 }
 
 void NivelRunner::actualizarTiempo(float deltaTiempo)
@@ -77,14 +81,14 @@ void NivelRunner::actualizarTiempo(float deltaTiempo)
 void NivelRunner::activarTormenta()
 {
     tormentaActiva = true;
-    velocidadScroll = std::max(velocidadScroll, 3.95f);
-    velocidadPersecucion = std::max(velocidadPersecucion, 3.05f);
+    velocidadScroll = std::max(velocidadScroll, 3.35f);
+    velocidadPersecucion = std::max(velocidadPersecucion, 3.0f);
 }
 
 void NivelRunner::desactivarTormenta()
 {
     tormentaActiva = false;
-    velocidadScroll = 3.35f;
+    velocidadScroll = 2.95f;
     velocidadPersecucion = 2.35f;
 }
 

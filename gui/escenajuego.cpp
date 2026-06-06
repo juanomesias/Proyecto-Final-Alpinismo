@@ -319,6 +319,10 @@ void EscenaJuego::usarSpritesNivel2()
 void EscenaJuego::actualizarMovimientoHorizontal()
 {
     float velocidadHorizontal = 0.0f;
+    const bool proteccionBloqueaAcciones = nivelJuego == 2 && protegiendo;
+    const float velocidadJugador = nivelJuego == 2
+                                       ? (jugador.getVelocidadExtra() ? 3.7f : 3.05f)
+                                       : jugador.getVelocidadActual();
 
     if(nivelJuego == 2 &&
         faseNivel2 == FaseNivel2::Runner &&
@@ -327,11 +331,11 @@ void EscenaJuego::actualizarMovimientoHorizontal()
         velocidadHorizontal += nivelRunner.getVelocidadScroll();
     }
 
-    if(teclaIzquierdaPresionada)
-        velocidadHorizontal -= jugador.getVelocidadActual();
+    if(!proteccionBloqueaAcciones && teclaIzquierdaPresionada)
+        velocidadHorizontal -= velocidadJugador;
 
-    if(teclaDerechaPresionada)
-        velocidadHorizontal += jugador.getVelocidadActual();
+    if(!proteccionBloqueaAcciones && teclaDerechaPresionada)
+        velocidadHorizontal += velocidadJugador;
 
     jugador.setVelocidadX(velocidadHorizontal);
 
@@ -355,7 +359,7 @@ void EscenaJuego::crearTextoNivel2()
     textoNivel->setDefaultTextColor(Qt::white);
     textoNivel->setZValue(1200);
 
-    textoPuntaje = escena->addText("IA activa | J para atacar", subtitulo);
+    textoPuntaje = escena->addText("IA activa | J atacar | Shift cubrirse", subtitulo);
     textoPuntaje->setDefaultTextColor(QColor(255, 232, 150));
     textoPuntaje->setZValue(1200);
 
@@ -366,10 +370,11 @@ void EscenaJuego::crearTextoNivel2()
 
 void EscenaJuego::iniciarAtaqueNivel2()
 {
-    if(nivelJuego != 2 || ataqueNivel2Activo || juegoTerminado)
+    if(nivelJuego != 2 || ataqueNivel2Activo || juegoTerminado || protegiendo)
         return;
 
     ataqueNivel2Activo = true;
+    golpeJefeAplicadoAtaqueNivel2 = false;
     tiempoAtaqueNivel2.restart();
 
     if(!ataqueNivel2Visual)
@@ -451,8 +456,30 @@ void EscenaJuego::resolverAtaqueNivel2()
     if(faseNivel2 == FaseNivel2::DueloFinal && perseguidorNivel2.estaVivo())
     {
         const QRectF rectBoss(perseguidorNivel2.getX(), perseguidorNivel2.getY(), 68.0f, 68.0f);
-        if(areaAtaque.intersects(rectBoss))
-            perseguidorNivel2.recibirDanio(18);
+        if(!golpeJefeAplicadoAtaqueNivel2 && areaAtaque.intersects(rectBoss))
+        {
+            const int vidaAntes = perseguidorNivel2.getVida();
+            perseguidorNivel2.recibirDanio(12);
+            golpeJefeAplicadoAtaqueNivel2 = true;
+
+            if(perseguidorNivel2.getVida() < vidaAntes)
+            {
+                golpesJefeNivel2++;
+                tiempoAtaqueJefeNivel2 = 0.0f;
+                if(golpesJefeNivel2 >= siguienteRafagaJefeNivel2)
+                {
+                    jefeRafagaCentralNivel2 = true;
+                    jefeReposicionandoNivel2 = false;
+                    tiempoRafagaJefeNivel2 = 0.0f;
+                    proyectilesRafagaJefeNivel2 = 0;
+                    siguienteRafagaJefeNivel2 += 10;
+                }
+                else
+                {
+                    elegirNuevaPosicionJefeNivel2();
+                }
+            }
+        }
     }
 
     for(OndaOscilatoriaNivel2& onda : ondasOscilatoriasNivel2)
@@ -564,9 +591,24 @@ void EscenaJuego::lanzarOndaOscilatoriaNivel2(const Enemigo& origen,
                                               float velocidad,
                                               int danio)
 {
-    const float direccion = origen.getX() <= jugador.getX() ? 1.0f : -1.0f;
-    ondasOscilatoriasNivel2.emplace_back(origen.getX() + (direccion > 0.0f ? 45.0f : -25.0f),
-                                         origen.getY() + 18.0f,
+    float direccion = origen.getX() <= jugador.getX() ? 1.0f : -1.0f;
+    float xInicial = origen.getX() + (direccion > 0.0f ? 45.0f : -25.0f);
+    float yInicial = origen.getY() + 18.0f;
+
+    if(faseNivel2 == FaseNivel2::Runner)
+    {
+        const bool desdeDelante = QRandomGenerator::global()->bounded(2) == 0;
+        direccion = desdeDelante ? -1.0f : 1.0f;
+        xInicial = desdeDelante
+                       ? std::min(inicioArenaFinalNivel2 - 120.0f, jugador.getX() + 560.0f)
+                       : std::max(fronteraIANivel2 + 45.0f, jugador.getX() - 360.0f);
+        yInicial = std::clamp(jugador.getY() + 18.0f,
+                              215.0f,
+                              455.0f);
+    }
+
+    ondasOscilatoriasNivel2.emplace_back(xInicial,
+                                         yInicial,
                                          velocidad * direccion,
                                          amplitud,
                                          34.0f,
@@ -663,6 +705,13 @@ void EscenaJuego::iniciarDueloFinalNivel2()
                                 JEFE,
                                 220,
                                 dificultad == 2 ? 18 : 14);
+    golpesJefeNivel2 = 0;
+    siguienteRafagaJefeNivel2 = 10;
+    proyectilesRafagaJefeNivel2 = 0;
+    tiempoAtaqueJefeNivel2 = 0.0f;
+    tiempoRafagaJefeNivel2 = 0.0f;
+    jefeRafagaCentralNivel2 = false;
+    elegirNuevaPosicionJefeNivel2();
 
     if(meta)
         meta->setVisible(false);
@@ -689,6 +738,174 @@ void EscenaJuego::iniciarDueloFinalNivel2()
 
     if(textoTiempo)
         textoTiempo->setPlainText("La IA cambio de protocolo");
+}
+
+void EscenaJuego::elegirNuevaPosicionJefeNivel2()
+{
+    std::vector<QPointF> posiciones = {
+        QPointF(inicioArenaFinalNivel2 + 170.0f, 458.0f),
+        QPointF((inicioArenaFinalNivel2 + finArenaFinalNivel2) * 0.5f - 30.0f, 458.0f),
+        QPointF(finArenaFinalNivel2 - 250.0f, 458.0f)
+    };
+
+    for(const Plataforma& plataforma : plataformas)
+    {
+        if(plataforma.getAlto() >= 70.0f ||
+            plataforma.getX() < inicioArenaFinalNivel2 ||
+            plataforma.getX() > finArenaFinalNivel2)
+        {
+            continue;
+        }
+
+        posiciones.push_back(QPointF(plataforma.getX() + plataforma.getAncho() * 0.5f - 31.0f,
+                                     plataforma.getY() - 62.0f));
+    }
+
+    if(posiciones.empty())
+        return;
+
+    int indice = QRandomGenerator::global()->bounded(static_cast<int>(posiciones.size()));
+    QPointF destino = posiciones[indice];
+
+    for(int intentos = 0; intentos < 6; ++intentos)
+    {
+        const float distancia = std::abs(static_cast<float>(destino.x()) - perseguidorNivel2.getX());
+        if(distancia > 180.0f)
+            break;
+
+        indice = QRandomGenerator::global()->bounded(static_cast<int>(posiciones.size()));
+        destino = posiciones[indice];
+    }
+
+    objetivoJefeNivel2X = static_cast<float>(destino.x());
+    objetivoJefeNivel2Y = static_cast<float>(destino.y());
+    jefeReposicionandoNivel2 = true;
+    jefeRafagaCentralNivel2 = false;
+}
+
+void EscenaJuego::lanzarRafagaCentralJefeNivel2()
+{
+    const float direcciones[][2] = {
+        {1.0f, 0.0f},
+        {-1.0f, 0.0f},
+        {0.7f, -0.45f},
+        {-0.7f, -0.45f},
+        {0.75f, 0.38f},
+        {-0.75f, 0.38f}
+    };
+
+    for(const auto& direccion : direcciones)
+        perseguidorNivel2.lanzarProyectilDireccionado(direccion[0], direccion[1], 0.8f);
+
+    lanzarOndaOscilatoriaNivel2(perseguidorNivel2,
+                                62.0f,
+                                6.2f,
+                                dificultad == 2 ? 16 : 12);
+}
+
+void EscenaJuego::actualizarDueloFinalNivel2(float deltaTiempo, bool jugadorEnAireAhora)
+{
+    jugador.setX(std::clamp(jugador.getX(),
+                            inicioArenaFinalNivel2 + 6.0f,
+                            finArenaFinalNivel2 - 56.0f));
+
+    perseguidorNivel2.percibirJugador(jugador.getX(),
+                                      jugador.getY(),
+                                      jugador.getVelocidadX(),
+                                      jugador.getVelocidadY(),
+                                      jugadorEnAireAhora,
+                                      protegiendo,
+                                      ataqueNivel2Activo,
+                                      true);
+    perseguidorNivel2.actualizarProyectiles();
+
+    if(jefeRafagaCentralNivel2)
+    {
+        objetivoJefeNivel2X = (inicioArenaFinalNivel2 + finArenaFinalNivel2) * 0.5f - 34.0f;
+        objetivoJefeNivel2Y = 458.0f;
+        const float dx = objetivoJefeNivel2X - perseguidorNivel2.getX();
+        const float dy = objetivoJefeNivel2Y - perseguidorNivel2.getY();
+        const float distancia = std::sqrt(dx * dx + dy * dy);
+
+        if(distancia > 4.0f)
+        {
+            const float velocidad = 4.1f;
+            perseguidorNivel2.setX(perseguidorNivel2.getX() + (dx / distancia) * velocidad);
+            perseguidorNivel2.setY(perseguidorNivel2.getY() + (dy / distancia) * velocidad);
+            return;
+        }
+
+        tiempoRafagaJefeNivel2 += deltaTiempo;
+        if(tiempoRafagaJefeNivel2 >= 0.48f && proyectilesRafagaJefeNivel2 < 5)
+        {
+            lanzarRafagaCentralJefeNivel2();
+            tiempoRafagaJefeNivel2 = 0.0f;
+            proyectilesRafagaJefeNivel2++;
+        }
+
+        if(proyectilesRafagaJefeNivel2 >= 5)
+            elegirNuevaPosicionJefeNivel2();
+
+        return;
+    }
+
+    if(jefeReposicionandoNivel2)
+    {
+        const float dx = objetivoJefeNivel2X - perseguidorNivel2.getX();
+        const float dy = objetivoJefeNivel2Y - perseguidorNivel2.getY();
+        const float distancia = std::sqrt(dx * dx + dy * dy);
+
+        if(distancia > 5.0f)
+        {
+            const float velocidad = 3.25f;
+            perseguidorNivel2.setX(perseguidorNivel2.getX() + (dx / distancia) * velocidad);
+            perseguidorNivel2.setY(perseguidorNivel2.getY() + (dy / distancia) * velocidad);
+            return;
+        }
+
+        perseguidorNivel2.setX(objetivoJefeNivel2X);
+        perseguidorNivel2.setY(objetivoJefeNivel2Y);
+        jefeReposicionandoNivel2 = false;
+        tiempoAtaqueJefeNivel2 = 0.0f;
+    }
+
+    tiempoAtaqueJefeNivel2 += deltaTiempo;
+
+    const float dxJugador = jugador.getX() - perseguidorNivel2.getX();
+    const float dyJugador = jugador.getY() - perseguidorNivel2.getY();
+    const float distanciaJugador = std::sqrt(dxJugador * dxJugador + dyJugador * dyJugador);
+
+    if(distanciaJugador < 115.0f && tiempoAtaqueJefeNivel2 > 0.35f)
+    {
+        elegirNuevaPosicionJefeNivel2();
+        return;
+    }
+
+    if(tiempoAtaqueJefeNivel2 >= 2.0f)
+    {
+        const bool usarOnda = jugadorEnAireAhora || QRandomGenerator::global()->bounded(3) == 0;
+        if(usarOnda)
+        {
+            lanzarOndaOscilatoriaNivel2(perseguidorNivel2,
+                                        76.0f,
+                                        6.7f,
+                                        dificultad == 2 ? 17 : 13);
+        }
+        else
+        {
+            const float objetivoX = jugador.getX() + jugador.getVelocidadX() * 0.35f;
+            const float objetivoY = jugador.getY() + jugador.getVelocidadY() * 0.25f;
+            perseguidorNivel2.lanzarProyectilDireccionado(objetivoX - perseguidorNivel2.getX(),
+                                                          objetivoY - perseguidorNivel2.getY(),
+                                                          0.5f);
+        }
+
+        tiempoAtaqueJefeNivel2 = 0.0f;
+    }
+
+    perseguidorNivel2.setX(std::clamp(perseguidorNivel2.getX(),
+                                      inicioArenaFinalNivel2 + 24.0f,
+                                      finArenaFinalNivel2 - 72.0f));
 }
 
 void EscenaJuego::sincronizarVisualesEnemigosNivel2()
@@ -839,31 +1056,7 @@ void EscenaJuego::actualizarNivel2()
     }
     else if(faseNivel2 == FaseNivel2::DueloFinal)
     {
-        jugador.setX(std::clamp(jugador.getX(),
-                                inicioArenaFinalNivel2 + 6.0f,
-                                finArenaFinalNivel2 - 56.0f));
-
-        perseguidorNivel2.percibirJugador(jugador.getX(),
-                                          jugador.getY(),
-                                          jugador.getVelocidadX(),
-                                          jugador.getVelocidadY(),
-                                          jugadorEnAireAhora,
-                                          protegiendo,
-                                          ataqueNivel2Activo,
-                                          true);
-        perseguidorNivel2.actualizar();
-        perseguidorNivel2.setX(std::clamp(perseguidorNivel2.getX(),
-                                          inicioArenaFinalNivel2 + 24.0f,
-                                          finArenaFinalNivel2 - 72.0f));
-
-        if(perseguidorNivel2.getAtaqueIA() == AtaqueIA::ATAQUE_OSCILATORIO)
-        {
-            lanzarOndaOscilatoriaNivel2(perseguidorNivel2,
-                                        92.0f,
-                                        7.8f,
-                                        dificultad == 2 ? 18 : 14);
-            perseguidorNivel2.consumirDecisionIA();
-        }
+        actualizarDueloFinalNivel2(deltaTiempo, jugadorEnAireAhora);
 
         if(!perseguidorNivel2.estaVivo())
         {
@@ -1009,20 +1202,17 @@ void EscenaJuego::actualizarNivel2()
         }
         else if(faseNivel2 == FaseNivel2::DueloFinal)
         {
-            switch(perseguidorNivel2.getEstado())
+            if(jefeRafagaCentralNivel2)
             {
-            case GIRANDO:
-                estadoIA = "Ataque cercano: giro";
-                break;
-            case OSCILANDO:
-                estadoIA = "Ataque oscilatorio";
-                break;
-            case PERSIGUIENDO:
-                estadoIA = "La IA busca cerrar distancia";
-                break;
-            default:
-                estadoIA = "La IA se adapta al duelo";
-                break;
+                estadoIA = "Patron central: busca huecos entre disparos";
+            }
+            else if(jefeReposicionandoNivel2)
+            {
+                estadoIA = "La IA busca otra posicion";
+            }
+            else
+            {
+                estadoIA = "La IA mantiene distancia y dispara";
             }
 
             textoTiempo->setPlainText(estadoIA);
@@ -1302,10 +1492,59 @@ void EscenaJuego::construirNivel2()
     teclaIzquierdaPresionada = false;
     teclaDerechaPresionada = false;
     ataqueNivel2Activo = false;
+    bajarPlataformaNivel2 = false;
+    golpeJefeAplicadoAtaqueNivel2 = false;
     enemigosDerrotadosNivel2 = 0;
     tiempoRunnerNivel2 = 0.0f;
     fronteraIANivel2 = 0.0f;
     impulsoPersecucionNivel2 = 0.0f;
+    objetivoJefeNivel2X = 0.0f;
+    objetivoJefeNivel2Y = 0.0f;
+    tiempoAtaqueJefeNivel2 = 0.0f;
+    tiempoRafagaJefeNivel2 = 0.0f;
+    golpesJefeNivel2 = 0;
+    siguienteRafagaJefeNivel2 = 10;
+    proyectilesRafagaJefeNivel2 = 0;
+    jefeReposicionandoNivel2 = false;
+    jefeRafagaCentralNivel2 = false;
+
+    int enemigosEnPlataformas = 0;
+    for(const Plataforma& plataformaNivel2 : plataformas)
+    {
+        if(plataformaNivel2.getAlto() >= 70.0f ||
+            plataformaNivel2.getX() < 700.0f ||
+            plataformaNivel2.getX() >= inicioArenaFinalNivel2 - 420.0f)
+        {
+            continue;
+        }
+
+        if(enemigosEnPlataformas % 3 == 0)
+        {
+            const float xEnemigo = plataformaNivel2.getX() + plataformaNivel2.getAncho() * 0.45f;
+            Enemigo patrullero(xEnemigo,
+                               plataformaNivel2.getY() - 58.0f,
+                               PATRULLERO,
+                               32,
+                               dificultad == 2 ? 13 : 10);
+            patrullero.setLimites(plataformaNivel2.getX() + 18.0f,
+                                  plataformaNivel2.getX() + plataformaNivel2.getAncho() - 56.0f);
+            patrullero.setVelocidades(1.35f + (dificultad == 2 ? 0.25f : 0.0f), 4.0f);
+            enemigosNivel2.push_back(std::move(patrullero));
+        }
+        else if(enemigosEnPlataformas % 5 == 2)
+        {
+            Enemigo volador(plataformaNivel2.getX() + plataformaNivel2.getAncho() * 0.55f,
+                            plataformaNivel2.getY() - 100.0f,
+                            VOLADOR,
+                            24,
+                            dificultad == 2 ? 15 : 12);
+            volador.setRangoDeteccion(260.0f);
+            volador.setVelocidades(0.0f, 4.4f + (dificultad == 2 ? 0.35f : 0.0f));
+            enemigosNivel2.push_back(std::move(volador));
+        }
+
+        enemigosEnPlataformas++;
+    }
 
     jugadorVisual = escena->addPixmap(spriteQuieto.scaled(80, 80, Qt::KeepAspectRatio,
                                                           Qt::SmoothTransformation));
@@ -1315,6 +1554,7 @@ void EscenaJuego::construirNivel2()
     vidaVisual = escena->addPixmap(vidaFull.scaled(115, 45, Qt::KeepAspectRatio,
                                                    Qt::SmoothTransformation));
     vidaVisual->setZValue(1000);
+    crearCuraciones();
     crearTextoNivel2();
     actualizarVidaVisual();
     actualizarMovimientoHorizontal();
@@ -1412,12 +1652,14 @@ void EscenaJuego::reiniciarNivelActual()
     jugador.setVelocidadY(0);
     jugador.setEnSuelo(true);
     protegiendo = false;
+    bajarPlataformaNivel2 = false;
     potenciadorActivo = false;
     tipoImpacto = 0;
     estabaCayendo = false;
     teclaIzquierdaPresionada = false;
     teclaDerechaPresionada = false;
     ataqueNivel2Activo = false;
+    golpeJefeAplicadoAtaqueNivel2 = false;
 
     if(nivelJuego == 2)
     {
@@ -1490,10 +1732,32 @@ void EscenaJuego::crearCuraciones()
 {
     if(spriteCuracion.isNull() || plataformas.empty()) return;
 
-    const std::vector<int> indices = {
-        std::min(14, static_cast<int>(plataformas.size()) - 1),
-        std::min(44, static_cast<int>(plataformas.size()) - 1)
-    };
+    std::vector<int> indices;
+
+    if(nivelJuego == 2)
+    {
+        for(int i = 0; i < static_cast<int>(plataformas.size()); ++i)
+        {
+            const Plataforma& plataforma = plataformas[i];
+            if(plataforma.getAlto() < 70.0f &&
+                plataforma.getX() > 850.0f &&
+                plataforma.getX() < inicioArenaFinalNivel2 - 500.0f &&
+                i % 7 == 0)
+            {
+                indices.push_back(i);
+            }
+
+            if(indices.size() >= 6)
+                break;
+        }
+    }
+    else
+    {
+        indices = {
+            std::min(14, static_cast<int>(plataformas.size()) - 1),
+            std::min(44, static_cast<int>(plataformas.size()) - 1)
+        };
+    }
 
     for(int indice : indices)
     {
@@ -1752,8 +2016,11 @@ void EscenaJuego::actualizarJuego()
 
         const bool colX = jx + JW > p.getX() && jx < p.getX() + p.getAncho();
         const bool colY = jy + JH >= p.getY() && jy + JH <= p.getY() + p.getAlto();
+        const bool atravesandoPlataformaNivel2 = nivelJuego == 2 &&
+                                                 bajarPlataformaNivel2 &&
+                                                 p.getAlto() < 70.0f;
 
-        if(colX && colY && jugador.getVelocidadY() >= 0)
+        if(colX && colY && jugador.getVelocidadY() >= 0 && !atravesandoPlataformaNivel2)
         {
             if(estabaCayendo)
             {
@@ -1934,27 +2201,72 @@ void EscenaJuego::actualizarJuego()
 
 void EscenaJuego::keyPressEvent(QKeyEvent *event)
 {
+    const bool accionesBloqueadasNivel2 = nivelJuego == 2 && protegiendo;
+
     if(event->key() == Qt::Key_A)
     {
+        if(accionesBloqueadasNivel2)
+            return;
         teclaIzquierdaPresionada = true;
         actualizarMovimientoHorizontal();
     }
 
     if(event->key() == Qt::Key_D)
     {
+        if(accionesBloqueadasNivel2)
+            return;
         teclaDerechaPresionada = true;
         actualizarMovimientoHorizontal();
     }
 
     if(event->key() == Qt::Key_S)
     {
+        if(accionesBloqueadasNivel2)
+            return;
+
+        if(nivelJuego == 2)
+        {
+            bajarPlataformaNivel2 = true;
+            if(jugador.getEnSuelo())
+            {
+                jugador.setY(jugador.getY() + 8.0f);
+                jugador.setEnSuelo(false);
+            }
+        }
+        else
+        {
+            protegiendo = true;
+        }
+    }
+
+    if(event->key() == Qt::Key_Shift && nivelJuego == 2)
+    {
         protegiendo = true;
+        bajarPlataformaNivel2 = false;
+        ataqueNivel2Activo = false;
+        if(ataqueNivel2Visual)
+            ataqueNivel2Visual->setVisible(false);
+        actualizarMovimientoHorizontal();
     }
 
     if(event->key() == Qt::Key_J)
         iniciarAtaqueNivel2();
 
-    if(event->key() == Qt::Key_Space) jugador.saltar();
+    if(event->key() == Qt::Key_Space)
+    {
+        if(accionesBloqueadasNivel2)
+            return;
+
+        if(nivelJuego == 2 && jugador.getEnSuelo())
+        {
+            jugador.setVelocidadY(jugador.getVelocidadExtra() ? -14.0f : -12.8f);
+            jugador.setEnSuelo(false);
+        }
+        else
+        {
+            jugador.saltar();
+        }
+    }
 }
 
 void EscenaJuego::keyReleaseEvent(QKeyEvent *event)
@@ -1969,7 +2281,18 @@ void EscenaJuego::keyReleaseEvent(QKeyEvent *event)
         actualizarMovimientoHorizontal();
 
     if(event->key() == Qt::Key_S)
+    {
+        if(nivelJuego == 2)
+            bajarPlataformaNivel2 = false;
+        else
+            protegiendo = false;
+    }
+
+    if(event->key() == Qt::Key_Shift && nivelJuego == 2)
+    {
         protegiendo = false;
+        actualizarMovimientoHorizontal();
+    }
 }
 
 void EscenaJuego::mousePressEvent(QMouseEvent *event)
