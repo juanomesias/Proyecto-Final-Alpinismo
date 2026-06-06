@@ -11,6 +11,11 @@ public:
     void aplicar(
         Entidad* entidad
         ) override;
+
+    void aplicarSinFriccion(
+        Entidad* entidad,
+        float impulsoMinimo = 2.2f
+        );
 };
 
 #endif

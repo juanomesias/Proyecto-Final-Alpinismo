@@ -9,8 +9,8 @@ NivelRunner::NivelRunner()
     tiempoTranscurrido = 0.0f;
     duracionTormenta = 18.0f;
     tormentaActiva = false;
-    inicioDueloFinal = 11050.0f;
-    finDueloFinal = 12550.0f;
+    inicioDueloFinal = 5600.0f;
+    finDueloFinal = 6400.0f;
     metaX = inicioDueloFinal;
     intervaloSpawnPatrulleros = 7.0f;
     intervaloSpawnVoladores = 9.0f;

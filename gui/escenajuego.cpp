@@ -12,6 +12,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QRandomGenerator>
+#include <QTransform>
 #include <QUrl>
 #include <cmath>
 #include <stdexcept>
@@ -196,6 +197,7 @@ EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
     QPixmap hojaSprites(rutaRecurso("sprites.png"));
     QPixmap hojaSpritesReves(rutaRecurso("spritesreves.png"));
     QPixmap hojaSprites2(rutaRecurso("sprites2.png"));
+    QPixmap hojaSprites2Reves(rutaRecurso("sprites2reves.png"));
     spriteNivel1Quieto = quitarFondoNegro(hojaSprites.copy(45, 45, 260, 280));
     spriteNivel1Saltar = quitarFondoNegro(hojaSprites.copy(330, 45, 260, 290));
     spriteNivel1Cayendo = quitarFondoNegro(hojaSprites.copy(55, 340, 300, 230));
@@ -210,6 +212,23 @@ EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
     spriteProteccion = quitarFondoNegro(QPixmap(rutaRecurso("proteccion.png")));
     spriteGolpe = quitarFondoNegro(QPixmap(rutaRecurso("golpe.png")));
     spriteGolpeEscudo = quitarFondoNegro(QPixmap(rutaRecurso("golpescudo.png")));
+    spriteAtaqueNivel2 = quitarFondoNegro(QPixmap(rutaRecurso("ataque.png")));
+    spriteAgachadoEscudo = quitarFondoNegro(QPixmap(rutaRecurso("agachado.png")).copy(0, 120, 760, 680));
+    spriteGolpeAgachado = quitarFondoNegro(QPixmap(rutaRecurso("agachado.png")).copy(745, 120, 835, 680));
+    spriteDanioNivel2 = quitarFondoNegro(QPixmap(rutaRecurso("dano2.png")));
+    spriteDragonNivel2 = quitarFondoNegro(QPixmap(rutaRecurso("dragon.png")));
+    QPixmap hojaAtaqueDragon(rutaRecurso("ataquedragon.png"));
+    spriteAtaqueDragon = quitarFondoNegro(hojaAtaqueDragon.copy(
+        0, 0, hojaAtaqueDragon.width() / 2, hojaAtaqueDragon.height()));
+    spriteAtaqueDragonReves = spriteAtaqueDragon.transformed(QTransform().scale(-1, 1));
+    spriteFantasmaFinalNivel2 = quitarFondoNegro(hojaSprites2Reves.copy(1340, 25, 285, 300));
+    QPixmap hojaAtaqueFinal(rutaRecurso("ataquefinal.png"));
+    spriteAtaqueFinalNivel2 = quitarFondoNegro(hojaAtaqueFinal.copy(
+        0, 0, hojaAtaqueFinal.width() / 2, hojaAtaqueFinal.height()));
+    spriteAtaqueFinalNivel2Reves = spriteAtaqueFinalNivel2.transformed(QTransform().scale(-1, 1));
+    spritePatrulleroNivel2 = quitarFondoAzul(rutaRecurso("patrullero.png"));
+    spriteVigilanteNivel2 = quitarFondoNegro(QPixmap(rutaRecurso("vigilante.png")));
+    spriteObstaculoNivel2 = quitarFondoAzul(rutaRecurso("obstaculo2.png"));
     spritePortal = hojaSprites2.copy(1235, 430, 405, 385).scaled(
         150, 155, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePortalGuia = quitarFondoNegro(hojaSprites2.copy(450, 505, 270, 335)).scaled(
@@ -217,6 +236,7 @@ EscenaJuego::EscenaJuego(QWidget *parent, int dificultad)
     spriteAyuda = quitarFondoNegro(QPixmap(rutaRecurso("vida.png"))).scaled(
         82, 82, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePlataformaNieve = quitarFondoNegro(hojaSprites.copy(440, 375, 390, 180));
+    spritePlataformaHielo = quitarFondoNegro(hojaSprites2.copy(1250, 165, 350, 235));
     spriteCuracion = quitarFondoNegro(hojaSprites.copy(905, 380, 145, 190)).scaled(
         52, 52, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     spritePiso.load(rutaRecurso("piso.png"));
@@ -273,6 +293,7 @@ EscenaJuego::~EscenaJuego() {}
 void EscenaJuego::agregarPlataforma(float x, float yMundo, float ancho, float alto)
 {
     plataformas.push_back(Plataforma(x, yMundo, ancho, alto));
+    plataformasResbalosas.push_back(false);
 
     QGraphicsPixmapItem* roca = escena->addPixmap(
         spritePlataformaNieve.scaled(ancho, alto, Qt::IgnoreAspectRatio,
@@ -283,9 +304,25 @@ void EscenaJuego::agregarPlataforma(float x, float yMundo, float ancho, float al
     plataformasVisuales.push_back(roca);
 }
 
+void EscenaJuego::agregarPlataformaResbalosa(float x, float yMundo, float ancho, float alto)
+{
+    plataformas.push_back(Plataforma(x, yMundo, ancho, alto));
+    plataformasResbalosas.push_back(true);
+
+    QPixmap spriteBase = spritePlataformaHielo.isNull() ? spritePlataformaNieve : spritePlataformaHielo;
+    QGraphicsPixmapItem* hielo = escena->addPixmap(
+        spriteBase.scaled(ancho, alto + 26.0f, Qt::IgnoreAspectRatio,
+                          Qt::SmoothTransformation));
+
+    hielo->setPos(x, yMundo - 18.0f);
+    hielo->setZValue(5);
+    plataformasVisuales.push_back(hielo);
+}
+
 void EscenaJuego::agregarPiso(float x, float yMundo, float ancho, float alto)
 {
     plataformas.push_back(Plataforma(x, yMundo, ancho, alto));
+    plataformasResbalosas.push_back(false);
 
     QGraphicsPixmapItem* piso = escena->addPixmap(
         spritePiso.scaled(ancho, alto, Qt::IgnoreAspectRatio,
@@ -379,9 +416,12 @@ void EscenaJuego::iniciarAtaqueNivel2()
 
     if(!ataqueNivel2Visual)
     {
-        ataqueNivel2Visual = escena->addRect(0, 0, 70, 45,
-                                             QPen(Qt::NoPen),
-                                             QBrush(QColor(255, 215, 90, 130)));
+        QPixmap spriteAtaque = spriteAtaqueNivel2.isNull()
+                                   ? QPixmap(70, 45)
+                                   : spriteAtaqueNivel2.scaled(92, 62,
+                                                               Qt::KeepAspectRatio,
+                                                               Qt::SmoothTransformation);
+        ataqueNivel2Visual = escena->addPixmap(spriteAtaque);
         ataqueNivel2Visual->setZValue(22);
     }
 
@@ -410,7 +450,14 @@ void EscenaJuego::actualizarAtaqueNivel2()
         return;
     }
 
-    ataqueNivel2Visual->setRect(obtenerAreaAtaqueNivel2());
+    const QRectF areaAtaque = obtenerAreaAtaqueNivel2();
+    ataqueNivel2Visual->setPixmap(spriteAtaqueNivel2.scaled(
+        areaAtaque.width() + 28.0f,
+        areaAtaque.height() + 18.0f,
+        Qt::KeepAspectRatio,
+        Qt::SmoothTransformation));
+    ataqueNivel2Visual->setPos(areaAtaque.left() - 8.0f,
+                               areaAtaque.top() - 8.0f);
 
     if(tiempoAtaqueNivel2.elapsed() >= 180)
     {
@@ -490,23 +537,33 @@ void EscenaJuego::resolverAtaqueNivel2()
 }
 
 void EscenaJuego::sincronizarProyectilesEnemigo(const Enemigo& enemigo,
-                                                std::vector<QGraphicsEllipseItem*>& visuales,
+                                                std::vector<QGraphicsPixmapItem*>& visuales,
                                                 const QColor& color)
 {
     const std::vector<Proyectil>& proyectiles = enemigo.getProyectiles();
 
     while(visuales.size() < proyectiles.size())
     {
-        QGraphicsEllipseItem* visual = escena->addEllipse(0, 0, 18, 18,
-                                                          QPen(Qt::NoPen),
-                                                          QBrush(color));
+        const bool ataqueFinal = enemigo.getTipo() == JEFE &&
+                                 faseNivel2 == FaseNivel2::DueloFinal;
+        const QPixmap& spriteBase = ataqueFinal ? spriteAtaqueFinalNivel2
+                                                : spriteAtaqueDragon;
+        QPixmap sprite = spriteBase.isNull()
+                             ? QPixmap(24, 24)
+                             : spriteBase.scaled(30, 30,
+                                                 Qt::KeepAspectRatio,
+                                                 Qt::SmoothTransformation);
+        if(spriteBase.isNull())
+            sprite.fill(color);
+
+        QGraphicsPixmapItem* visual = escena->addPixmap(sprite);
         visual->setZValue(21);
         visuales.push_back(visual);
     }
 
     while(visuales.size() > proyectiles.size())
     {
-        QGraphicsEllipseItem* visual = visuales.back();
+        QGraphicsPixmapItem* visual = visuales.back();
         escena->removeItem(visual);
         delete visual;
         visuales.pop_back();
@@ -514,6 +571,24 @@ void EscenaJuego::sincronizarProyectilesEnemigo(const Enemigo& enemigo,
 
     for(size_t i = 0; i < proyectiles.size(); ++i)
     {
+        const bool ataqueFinal = enemigo.getTipo() == JEFE &&
+                                 faseNivel2 == FaseNivel2::DueloFinal;
+        const QPixmap& spriteDerecha = ataqueFinal ? spriteAtaqueFinalNivel2
+                                                   : spriteAtaqueDragon;
+        const QPixmap& spriteIzquierda = ataqueFinal ? spriteAtaqueFinalNivel2Reves
+                                                     : spriteAtaqueDragonReves;
+        const QPixmap& spriteOrientado = proyectiles[i].getDireccionX() < 0.0f
+                                             ? spriteIzquierda
+                                             : spriteDerecha;
+        if(!spriteOrientado.isNull())
+        {
+            visuales[i]->setPixmap(spriteOrientado.scaled(
+                ataqueFinal ? 36 : 30,
+                ataqueFinal ? 36 : 30,
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation));
+        }
+
         visuales[i]->setPos(proyectiles[i].getX(), proyectiles[i].getY());
         visuales[i]->setVisible(proyectiles[i].estaActivo());
     }
@@ -525,16 +600,25 @@ void EscenaJuego::actualizarOndasOscilatoriasNivel2()
 
     while(ondasOscilatoriasNivel2Visuales.size() < ondasOscilatoriasNivel2.size())
     {
-        QGraphicsEllipseItem* visual = escena->addEllipse(0, 0, 30, 30,
-                                                          QPen(Qt::NoPen),
-                                                          QBrush(QColor(123, 240, 255, 170)));
+        const QPixmap& spriteBase = faseNivel2 == FaseNivel2::DueloFinal
+                                        ? spriteAtaqueFinalNivel2
+                                        : spriteAtaqueDragon;
+        QPixmap sprite = spriteBase.isNull()
+                             ? QPixmap(34, 34)
+                             : spriteBase.scaled(38, 38,
+                                                 Qt::KeepAspectRatio,
+                                                 Qt::SmoothTransformation);
+        if(spriteBase.isNull())
+            sprite.fill(QColor(255, 140, 80));
+
+        QGraphicsPixmapItem* visual = escena->addPixmap(sprite);
         visual->setZValue(23);
         ondasOscilatoriasNivel2Visuales.push_back(visual);
     }
 
     while(ondasOscilatoriasNivel2Visuales.size() > ondasOscilatoriasNivel2.size())
     {
-        QGraphicsEllipseItem* visual = ondasOscilatoriasNivel2Visuales.back();
+        QGraphicsPixmapItem* visual = ondasOscilatoriasNivel2Visuales.back();
         escena->removeItem(visual);
         delete visual;
         ondasOscilatoriasNivel2Visuales.pop_back();
@@ -550,7 +634,7 @@ void EscenaJuego::actualizarOndasOscilatoriasNivel2()
             jugadorRect.intersects(QRectF(onda.x, onda.y, onda.ancho, onda.alto)))
         {
             onda.activa = false;
-            recibirImpactoObjeto(onda.danio);
+            recibirImpactoObjeto(nivelJuego == 2 ? 25 : onda.danio);
         }
 
         const bool fueraDeEscena = onda.x < -200.0f ||
@@ -561,20 +645,28 @@ void EscenaJuego::actualizarOndasOscilatoriasNivel2()
         if(fueraDeEscena)
             onda.activa = false;
 
-        ondasOscilatoriasNivel2Visuales[i]->setRect(0, 0, onda.ancho, onda.alto);
+        const QPixmap& spriteOrientado = onda.velocidadX < 0.0f
+                                             ? (faseNivel2 == FaseNivel2::DueloFinal
+                                                    ? spriteAtaqueFinalNivel2Reves
+                                                    : spriteAtaqueDragonReves)
+                                             : (faseNivel2 == FaseNivel2::DueloFinal
+                                                    ? spriteAtaqueFinalNivel2
+                                                    : spriteAtaqueDragon);
+        if(!spriteOrientado.isNull())
+            ondasOscilatoriasNivel2Visuales[i]->setPixmap(spriteOrientado.scaled(
+                onda.ancho + 10.0f,
+                onda.alto + 10.0f,
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation));
         ondasOscilatoriasNivel2Visuales[i]->setPos(onda.x, onda.y);
         ondasOscilatoriasNivel2Visuales[i]->setVisible(onda.activa);
-        ondasOscilatoriasNivel2Visuales[i]->setBrush(
-            faseNivel2 == FaseNivel2::DueloFinal
-                ? QBrush(QColor(255, 140, 80, 180))
-                : QBrush(QColor(123, 240, 255, 170)));
     }
 
     for(size_t i = 0; i < ondasOscilatoriasNivel2.size();)
     {
         if(!ondasOscilatoriasNivel2[i].activa)
         {
-            QGraphicsEllipseItem* visual = ondasOscilatoriasNivel2Visuales[i];
+            QGraphicsPixmapItem* visual = ondasOscilatoriasNivel2Visuales[i];
             escena->removeItem(visual);
             delete visual;
             ondasOscilatoriasNivel2Visuales.erase(ondasOscilatoriasNivel2Visuales.begin() + i);
@@ -647,7 +739,7 @@ void EscenaJuego::invocarApoyoIANivel2()
 
 void EscenaJuego::limpiarEntidadesSecundariasNivel2()
 {
-    for(QGraphicsRectItem* visual : enemigosNivel2Visuales)
+    for(QGraphicsPixmapItem* visual : enemigosNivel2Visuales)
     {
         escena->removeItem(visual);
         delete visual;
@@ -656,7 +748,7 @@ void EscenaJuego::limpiarEntidadesSecundariasNivel2()
 
     for(auto& proyectilesVisuales : proyectilesEnemigosNivel2Visuales)
     {
-        for(QGraphicsEllipseItem* visual : proyectilesVisuales)
+        for(QGraphicsPixmapItem* visual : proyectilesVisuales)
         {
             escena->removeItem(visual);
             delete visual;
@@ -666,7 +758,7 @@ void EscenaJuego::limpiarEntidadesSecundariasNivel2()
 
     enemigosNivel2.clear();
 
-    for(QGraphicsEllipseItem* visual : ondasOscilatoriasNivel2Visuales)
+    for(QGraphicsPixmapItem* visual : ondasOscilatoriasNivel2Visuales)
     {
         escena->removeItem(visual);
         delete visual;
@@ -674,7 +766,7 @@ void EscenaJuego::limpiarEntidadesSecundariasNivel2()
     ondasOscilatoriasNivel2Visuales.clear();
     ondasOscilatoriasNivel2.clear();
 
-    for(QGraphicsEllipseItem* visual : proyectilesPerseguidorVisuales)
+    for(QGraphicsPixmapItem* visual : proyectilesPerseguidorVisuales)
     {
         escena->removeItem(visual);
         delete visual;
@@ -704,7 +796,10 @@ void EscenaJuego::iniciarDueloFinalNivel2()
                                 392.0f,
                                 JEFE,
                                 220,
-                                75);
+                                25);
+    if(perseguidorNivel2Visual && !spriteFantasmaFinalNivel2.isNull())
+        perseguidorNivel2Visual->setPixmap(spriteFantasmaFinalNivel2.scaled(
+            96, 96, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     golpesJefeNivel2 = 0;
     siguienteRafagaJefeNivel2 = 10;
     proyectilesRafagaJefeNivel2 = 0;
@@ -990,9 +1085,15 @@ void EscenaJuego::sincronizarVisualesEnemigosNivel2()
 {
     while(enemigosNivel2Visuales.size() < enemigosNivel2.size())
     {
-        QGraphicsRectItem* visual = escena->addRect(0, 0, 48, 48,
-                                                    QPen(Qt::NoPen),
-                                                    QBrush(QColor(130, 28, 24)));
+        QPixmap sprite = spritePatrulleroNivel2.isNull()
+                             ? QPixmap(62, 62)
+                             : spritePatrulleroNivel2.scaled(70, 70,
+                                                             Qt::KeepAspectRatio,
+                                                             Qt::SmoothTransformation);
+        if(spritePatrulleroNivel2.isNull())
+            sprite.fill(QColor(130, 28, 24));
+
+        QGraphicsPixmapItem* visual = escena->addPixmap(sprite);
         visual->setZValue(18);
         enemigosNivel2Visuales.push_back(visual);
         proyectilesEnemigosNivel2Visuales.emplace_back();
@@ -1000,14 +1101,14 @@ void EscenaJuego::sincronizarVisualesEnemigosNivel2()
 
     while(enemigosNivel2Visuales.size() > enemigosNivel2.size())
     {
-        for(QGraphicsEllipseItem* visualProyectil : proyectilesEnemigosNivel2Visuales.back())
+        for(QGraphicsPixmapItem* visualProyectil : proyectilesEnemigosNivel2Visuales.back())
         {
             escena->removeItem(visualProyectil);
             delete visualProyectil;
         }
         proyectilesEnemigosNivel2Visuales.pop_back();
 
-        QGraphicsRectItem* visual = enemigosNivel2Visuales.back();
+        QGraphicsPixmapItem* visual = enemigosNivel2Visuales.back();
         escena->removeItem(visual);
         delete visual;
         enemigosNivel2Visuales.pop_back();
@@ -1016,7 +1117,7 @@ void EscenaJuego::sincronizarVisualesEnemigosNivel2()
     for(size_t i = 0; i < enemigosNivel2.size(); ++i)
     {
         const Enemigo& enemigo = enemigosNivel2[i];
-        QGraphicsRectItem* visual = enemigosNivel2Visuales[i];
+        QGraphicsPixmapItem* visual = enemigosNivel2Visuales[i];
 
         QColor color(130, 28, 24);
         QSizeF dimensiones(48.0f, 58.0f);
@@ -1032,8 +1133,19 @@ void EscenaJuego::sincronizarVisualesEnemigosNivel2()
             dimensiones = QSizeF(62.0f, 62.0f);
         }
 
-        visual->setBrush(QBrush(color));
-        visual->setRect(0, 0, dimensiones.width(), dimensiones.height());
+        const QPixmap& spriteBase = enemigo.getTipo() == PATRULLERO
+                                        ? spritePatrulleroNivel2
+                                        : spriteVigilanteNivel2;
+        QPixmap sprite = spriteBase.isNull()
+                             ? QPixmap(dimensiones.toSize())
+                             : spriteBase.scaled(dimensiones.width() + 16.0f,
+                                                 dimensiones.height() + 16.0f,
+                                                 Qt::KeepAspectRatio,
+                                                 Qt::SmoothTransformation);
+        if(spriteBase.isNull())
+            sprite.fill(color);
+
+        visual->setPixmap(sprite);
         visual->setPos(enemigo.getX(), enemigo.getY());
         visual->setVisible(enemigo.estaVivo());
 
@@ -1047,10 +1159,15 @@ void EscenaJuego::sincronizarVisualesEnemigosNivel2()
     {
         perseguidorNivel2Visual->setPos(perseguidorNivel2.getX(), perseguidorNivel2.getY());
         perseguidorNivel2Visual->setVisible(perseguidorNivel2.estaVivo());
-        perseguidorNivel2Visual->setBrush(
-            faseNivel2 == FaseNivel2::DueloFinal
-                ? QBrush(QColor(214, 98, 34))
-                : QBrush(QColor(170, 32, 24)));
+        const QPixmap& spriteBase = faseNivel2 == FaseNivel2::DueloFinal
+                                        ? spriteFantasmaFinalNivel2
+                                        : spriteDragonNivel2;
+        if(!spriteBase.isNull())
+            perseguidorNivel2Visual->setPixmap(spriteBase.scaled(
+                faseNivel2 == FaseNivel2::DueloFinal ? 96 : 74,
+                faseNivel2 == FaseNivel2::DueloFinal ? 96 : 74,
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation));
     }
 
     if(barreraIAVisual)
@@ -1127,7 +1244,7 @@ void EscenaJuego::actualizarNivel2()
         if((jugador.getX() <= fronteraIANivel2 + 55.0f || rectPerseguidor.intersects(jugadorRect)) &&
             (!tiempoDanioNivel2.isValid() || tiempoDanioNivel2.elapsed() >= 350))
         {
-            recibirImpactoObjeto(dificultad == 2 ? 18 : 12);
+            recibirImpactoObjeto(25);
             tiempoDanioNivel2.restart();
             jugador.setX(std::max(jugador.getX(), fronteraIANivel2 + 62.0f));
         }
@@ -1157,7 +1274,7 @@ void EscenaJuego::actualizarNivel2()
 
         const QRectF rectJefe(perseguidorNivel2.getX(), perseguidorNivel2.getY(), 68.0f, 68.0f);
         if(!jefeAtaqueAltoNivel2 && rectJefe.intersects(jugadorRect))
-            recibirImpactoObjeto(75);
+            recibirImpactoObjeto(25);
     }
 
     for(Proyectil& proyectil : perseguidorNivel2.getProyectiles())
@@ -1168,7 +1285,7 @@ void EscenaJuego::actualizarNivel2()
         if(jugadorRect.intersects(QRectF(proyectil.getX(), proyectil.getY(), 18.0f, 18.0f)))
         {
             proyectil.desactivar();
-            recibirImpactoObjeto(proyectil.getDanio());
+            recibirImpactoObjeto(nivelJuego == 2 ? 25 : proyectil.getDanio());
         }
     }
 
@@ -1194,7 +1311,7 @@ void EscenaJuego::actualizarNivel2()
             rectEnemigo.intersects(jugadorRect) &&
             (!tiempoDanioNivel2.isValid() || tiempoDanioNivel2.elapsed() >= 350))
         {
-            recibirImpactoObjeto(enemigo.getDanio());
+            recibirImpactoObjeto(nivelJuego == 2 ? 25 : enemigo.getDanio());
             tiempoDanioNivel2.restart();
         }
 
@@ -1206,7 +1323,7 @@ void EscenaJuego::actualizarNivel2()
             if(jugadorRect.intersects(QRectF(proyectil.getX(), proyectil.getY(), 18.0f, 18.0f)))
             {
                 proyectil.desactivar();
-                recibirImpactoObjeto(proyectil.getDanio());
+                recibirImpactoObjeto(nivelJuego == 2 ? 25 : proyectil.getDanio());
             }
         }
 
@@ -1217,14 +1334,14 @@ void EscenaJuego::actualizarNivel2()
 
         if(eliminar)
         {
-            for(QGraphicsEllipseItem* visualProyectil : proyectilesEnemigosNivel2Visuales[i])
+            for(QGraphicsPixmapItem* visualProyectil : proyectilesEnemigosNivel2Visuales[i])
             {
                 escena->removeItem(visualProyectil);
                 delete visualProyectil;
             }
             proyectilesEnemigosNivel2Visuales.erase(proyectilesEnemigosNivel2Visuales.begin() + i);
 
-            QGraphicsRectItem* visual = enemigosNivel2Visuales[i];
+            QGraphicsPixmapItem* visual = enemigosNivel2Visuales[i];
             escena->removeItem(visual);
             delete visual;
             enemigosNivel2Visuales.erase(enemigosNivel2Visuales.begin() + i);
@@ -1338,8 +1455,10 @@ void EscenaJuego::construirMundo(int mundoAlto)
     // Fondo 3: primeras plataformas para empezar a subir.
     agregarPlataforma(XEscalada(590), YBase(450), 130, 25);
     agregarPlataforma(XEscalada(410), YBase(350), 130, 25);
+    agregarPlataformaResbalosa(XEscalada(560), YBase(315), 150, 25);
     agregarPlataforma(XEscalada(230), YBase(250), 130, 25);
     agregarPlataforma(XEscalada(80),  YBase(150), 130, 25);
+    agregarPlataformaResbalosa(XEscalada(530), YBase(130), 150, 25);
     agregarPlataforma(XEscalada(360), YBase(50),  130, 25);
 
     // Desde aqui cada fondo queda encima del anterior.
@@ -1352,6 +1471,7 @@ void EscenaJuego::construirMundo(int mundoAlto)
         agregarPlataforma(XEscalada(derecha ? 560 : 110), YEscalada(fondo, 350), 140, 25);
         agregarPlataforma(XEscalada(derecha ? 360 : 350), YEscalada(fondo, 250), 140, 25);
         agregarPlataforma(XEscalada(derecha ? 130 : 560), YEscalada(fondo, 150), 140, 25);
+        agregarPlataformaResbalosa(XEscalada(derecha ? 560 : 120), YEscalada(fondo, 95), 150, 25);
         agregarPlataforma(XEscalada(derecha ? 430 : 250), YEscalada(fondo, 50),  140, 25);
     }
 
@@ -1381,7 +1501,7 @@ void EscenaJuego::limpiarPlataformas()
 
 void EscenaJuego::limpiarObstaculos()
 {
-    for(QGraphicsRectItem* v : obstaculosVisuales)
+    for(QGraphicsPixmapItem* v : obstaculosVisuales)
     {
         escena->removeItem(v);
         delete v;
@@ -1401,7 +1521,7 @@ void EscenaJuego::configurarAudio()
     musica = new QMediaPlayer(this);
     salidaMusica = new QAudioOutput(this);
     musica->setAudioOutput(salidaMusica);
-    salidaMusica->setVolume(0.25f);
+    salidaMusica->setVolume(0.15f);
 
     sonidoDanio = new QMediaPlayer(this);
     salidaDanio = new QAudioOutput(this);
@@ -1459,6 +1579,7 @@ void EscenaJuego::construirNivel2()
     nivelRunner = NivelRunner();
     fondosItems.clear();
     plataformas.clear();
+    plataformasResbalosas.clear();
     obstaculos.clear();
     obstaculosVisuales.clear();
     powerups.clear();
@@ -1493,14 +1614,15 @@ void EscenaJuego::construirNivel2()
     inicioArenaFinalNivel2 = nivelRunner.getInicioDueloFinal();
     finArenaFinalNivel2 = nivelRunner.getFinDueloFinal();
 
-    escena->setSceneRect(0, 0, finArenaFinalNivel2 + 420.0f, ALTO_PANTALLA);
+    escena->setSceneRect(0, 0, ANCHO_PANTALLA * 8.0f, ALTO_PANTALLA);
 
-    const int cantidadFondos = static_cast<int>(std::ceil(escena->sceneRect().width() / ANCHO_PANTALLA));
-    for(int i = 0; i < cantidadFondos; i++)
+    for(int i = 0; i < 8; i++)
     {
-        QPixmap fondo(rutaRecurso(i % 2 == 0 ? "fondo_nivel2_1.png" : "fondo_nivel2_2.png"));
+        const int indiceFondo = i + 1;
+        QString nombreFondo = QString("fondo_nivel2_%1.png").arg(indiceFondo);
+        QPixmap fondo(rutaRecurso(nombreFondo));
         if(fondo.isNull())
-            fondo.load(rutaRecurso("fondo_nivel2_3.png"));
+            fondo.load(rutaRecurso("fondo_nivel2_1.png"));
 
         fondo = fondo.scaled(ANCHO_PANTALLA, ALTO_PANTALLA,
                              Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
@@ -1513,6 +1635,7 @@ void EscenaJuego::construirNivel2()
     for(const Plataforma& plataformaNivel2 : nivelRunner.getPlataformas())
     {
         plataformas.push_back(plataformaNivel2);
+        plataformasResbalosas.push_back(false);
 
         const bool esPiso = plataformaNivel2.getAlto() >= 70.0f;
         QPixmap spriteBase = esPiso ? spritePiso2 : spritePlataformaNieve;
@@ -1533,11 +1656,17 @@ void EscenaJuego::construirNivel2()
     for(const Obstaculo& obstaculoNivel2 : nivelRunner.getObstaculos())
     {
         obstaculos.push_back(obstaculoNivel2);
-        QGraphicsRectItem* visual = escena->addRect(0, 0,
-                                                    obstaculoNivel2.getAncho(),
-                                                    obstaculoNivel2.getAlto(),
-                                                    QPen(Qt::NoPen),
-                                                    QBrush(QColor(80, 48, 38)));
+        QPixmap sprite = spriteObstaculoNivel2.isNull()
+                             ? QPixmap(static_cast<int>(obstaculoNivel2.getAncho()),
+                                       static_cast<int>(obstaculoNivel2.getAlto()))
+                             : spriteObstaculoNivel2.scaled(obstaculoNivel2.getAncho(),
+                                                            obstaculoNivel2.getAlto(),
+                                                            Qt::IgnoreAspectRatio,
+                                                            Qt::SmoothTransformation);
+        if(spriteObstaculoNivel2.isNull())
+            sprite.fill(QColor(80, 48, 38));
+
+        QGraphicsPixmapItem* visual = escena->addPixmap(sprite);
         visual->setPos(obstaculoNivel2.getX(), obstaculoNivel2.getY());
         visual->setZValue(11);
         obstaculosVisuales.push_back(visual);
@@ -1565,9 +1694,15 @@ void EscenaJuego::construirNivel2()
     muroArenaDerechoNivel2Visual->setVisible(false);
 
     perseguidorNivel2 = Enemigo(20.0f, 405.0f, JEFE, 170, dificultad == 2 ? 16 : 12);
-    perseguidorNivel2Visual = escena->addRect(0, 0, 62, 62,
-                                              QPen(Qt::NoPen),
-                                              QBrush(QColor(170, 32, 24)));
+    QPixmap spriteDragon = spriteDragonNivel2.isNull()
+                               ? QPixmap(74, 74)
+                               : spriteDragonNivel2.scaled(74, 74,
+                                                           Qt::KeepAspectRatio,
+                                                           Qt::SmoothTransformation);
+    if(spriteDragonNivel2.isNull())
+        spriteDragon.fill(QColor(170, 32, 24));
+
+    perseguidorNivel2Visual = escena->addPixmap(spriteDragon);
     perseguidorNivel2Visual->setZValue(19);
 
     jugador.setX(80);
@@ -1675,11 +1810,7 @@ void EscenaJuego::recibirDanio(int cantidad)
         return;
     }
 
-    int cantidadAplicada = cantidad;
-    if(nivelJuego == 2)
-        cantidadAplicada = std::max(1, static_cast<int>(std::ceil(cantidad / 3.0f)));
-
-    vidaJugador = std::max(0, vidaJugador - cantidadAplicada);
+    vidaJugador = std::max(0, vidaJugador - cantidad);
     jugador.setVida(vidaJugador);
     actualizarVidaVisual();
     reproducirSonidoDanio();
@@ -1711,9 +1842,8 @@ void EscenaJuego::mostrarPantallaMuerte()
     if(!spriteWasted.isNull())
     {
         wastedVisual = escena->addPixmap(spriteWasted.scaled(
-            310, 170, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-        wastedVisual->setPos(centro.x() - wastedVisual->boundingRect().width() / 2.0,
-                             centro.y() - 180);
+            vista.width(), vista.height(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+        wastedVisual->setPos(vista.left(), vista.top());
         wastedVisual->setZValue(2000);
     }
 
@@ -2114,8 +2244,9 @@ void EscenaJuego::actualizarJuego()
         inicioCaidaY = jugador.getY();
     }
 
-    for(const Plataforma& p : plataformas)
+    for(size_t indicePlataforma = 0; indicePlataforma < plataformas.size(); ++indicePlataforma)
     {
+        const Plataforma& p = plataformas[indicePlataforma];
         float jx = jugador.getX();
         float jy = jugador.getY();
         const float JW = 50;
@@ -2148,6 +2279,12 @@ void EscenaJuego::actualizarJuego()
             jugador.setY(p.getY() - JH);
             jugador.setVelocidadY(0);
             jugador.setEnSuelo(true);
+
+            if(indicePlataforma < plataformasResbalosas.size() &&
+                plataformasResbalosas[indicePlataforma])
+            {
+                friccion.aplicarSinFriccion(&jugador);
+            }
         }
     }
 
@@ -2161,7 +2298,7 @@ void EscenaJuego::actualizarJuego()
         const bool colY = jugador.getY() + JH > obs.getY() &&
                           jugador.getY()      < obs.getY() + obs.getAlto();
 
-        if(colX && colY) recibirImpactoObjeto(obs.getDanio());
+        if(colX && colY) recibirImpactoObjeto(nivelJuego == 2 ? 25 : obs.getDanio());
     }
 
     if(nivelJuego == 2)
@@ -2225,9 +2362,21 @@ void EscenaJuego::actualizarJuego()
         {
             tipoImpacto = 0;
         }
+        else if(tipoImpacto == 2 && nivelJuego == 2 && !spriteGolpeAgachado.isNull())
+        {
+            jugadorVisual->setPixmap(spriteGolpeAgachado.scaled(105, 100, Qt::KeepAspectRatio,
+                                                                Qt::SmoothTransformation));
+            spriteEspecialActivo = true;
+        }
         else if(tipoImpacto == 2 && !spriteGolpeEscudo.isNull())
         {
             jugadorVisual->setPixmap(spriteGolpeEscudo.scaled(100, 100, Qt::KeepAspectRatio,
+                                                              Qt::SmoothTransformation));
+            spriteEspecialActivo = true;
+        }
+        else if(tipoImpacto == 1 && nivelJuego == 2 && !spriteDanioNivel2.isNull())
+        {
+            jugadorVisual->setPixmap(spriteDanioNivel2.scaled(100, 100, Qt::KeepAspectRatio,
                                                               Qt::SmoothTransformation));
             spriteEspecialActivo = true;
         }
@@ -2237,6 +2386,20 @@ void EscenaJuego::actualizarJuego()
                                                         Qt::SmoothTransformation));
             spriteEspecialActivo = true;
         }
+    }
+
+    if(!spriteEspecialActivo && ataqueNivel2Activo && !spriteAtaqueNivel2.isNull())
+    {
+        jugadorVisual->setPixmap(spriteAtaqueNivel2.scaled(105, 100, Qt::KeepAspectRatio,
+                                                           Qt::SmoothTransformation));
+        spriteEspecialActivo = true;
+    }
+
+    if(!spriteEspecialActivo && nivelJuego == 2 && protegiendo && !spriteAgachadoEscudo.isNull())
+    {
+        jugadorVisual->setPixmap(spriteAgachadoEscudo.scaled(105, 100, Qt::KeepAspectRatio,
+                                                            Qt::SmoothTransformation));
+        spriteEspecialActivo = true;
     }
 
     if(!spriteEspecialActivo && protegiendo && !spriteProteccion.isNull())

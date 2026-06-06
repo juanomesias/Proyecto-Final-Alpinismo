@@ -99,6 +99,7 @@ private:
     void limpiarPlataformas();
     void limpiarObstaculos();
     void agregarPlataforma(float x, float y, float ancho, float alto);
+    void agregarPlataformaResbalosa(float x, float y, float ancho, float alto);
     void agregarPiso(float x, float y, float ancho, float alto);
     void recibirDanio(int cantidad);
     void actualizarVidaVisual();
@@ -131,7 +132,7 @@ private:
     void actualizarNivel2();
     void sincronizarVisualesEnemigosNivel2();
     void sincronizarProyectilesEnemigo(const Enemigo& enemigo,
-                                       std::vector<QGraphicsEllipseItem*>& visuales,
+                                       std::vector<QGraphicsPixmapItem*>& visuales,
                                        const QColor& color);
     void actualizarOndasOscilatoriasNivel2();
     void lanzarOndaOscilatoriaNivel2(const Enemigo& origen,
@@ -182,6 +183,20 @@ private:
     QPixmap spriteBotonRepetir;
     QPixmap spriteBotonSalir;
     QPixmap spritePortalGuia;
+    QPixmap spritePlataformaHielo;
+    QPixmap spriteAtaqueNivel2;
+    QPixmap spriteAgachadoEscudo;
+    QPixmap spriteGolpeAgachado;
+    QPixmap spriteDanioNivel2;
+    QPixmap spriteDragonNivel2;
+    QPixmap spriteAtaqueDragon;
+    QPixmap spriteAtaqueDragonReves;
+    QPixmap spriteFantasmaFinalNivel2;
+    QPixmap spriteAtaqueFinalNivel2;
+    QPixmap spriteAtaqueFinalNivel2Reves;
+    QPixmap spritePatrulleroNivel2;
+    QPixmap spriteVigilanteNivel2;
+    QPixmap spriteObstaculoNivel2;
     QTimer* timer;
 
     Jugador              jugador;
@@ -189,8 +204,9 @@ private:
     EfectoFriccion       friccion;
 
     std::vector<Plataforma>            plataformas;
+    std::vector<bool>                  plataformasResbalosas;
     std::vector<Obstaculo>             obstaculos;
-    std::vector<QGraphicsRectItem*>    obstaculosVisuales;
+    std::vector<QGraphicsPixmapItem*>  obstaculosVisuales;
     std::vector<PowerUp>               powerups;
     std::vector<QGraphicsEllipseItem*> powerupsVisuales;
     std::vector<QGraphicsPixmapItem*>  plataformasVisuales;
@@ -202,14 +218,14 @@ private:
     NivelRunner nivelRunner;
     Enemigo perseguidorNivel2;
     std::vector<Enemigo>               enemigosNivel2;
-    std::vector<QGraphicsRectItem*>    enemigosNivel2Visuales;
-    std::vector<std::vector<QGraphicsEllipseItem*>> proyectilesEnemigosNivel2Visuales;
-    std::vector<QGraphicsEllipseItem*> proyectilesPerseguidorVisuales;
+    std::vector<QGraphicsPixmapItem*>  enemigosNivel2Visuales;
+    std::vector<std::vector<QGraphicsPixmapItem*>> proyectilesEnemigosNivel2Visuales;
+    std::vector<QGraphicsPixmapItem*>  proyectilesPerseguidorVisuales;
     std::vector<OndaOscilatoriaNivel2> ondasOscilatoriasNivel2;
-    std::vector<QGraphicsEllipseItem*> ondasOscilatoriasNivel2Visuales;
-    QGraphicsRectItem* perseguidorNivel2Visual = nullptr;
+    std::vector<QGraphicsPixmapItem*>  ondasOscilatoriasNivel2Visuales;
+    QGraphicsPixmapItem* perseguidorNivel2Visual = nullptr;
     QGraphicsRectItem* barreraIAVisual = nullptr;
-    QGraphicsRectItem* ataqueNivel2Visual = nullptr;
+    QGraphicsPixmapItem* ataqueNivel2Visual = nullptr;
     QGraphicsRectItem* muroArenaIzquierdoNivel2Visual = nullptr;
     QGraphicsRectItem* muroArenaDerechoNivel2Visual = nullptr;
     QGraphicsPixmapItem* ayudaVisual = nullptr;
