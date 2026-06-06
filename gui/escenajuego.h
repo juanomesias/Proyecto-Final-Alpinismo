@@ -140,6 +140,9 @@ private:
                                      int danio);
     void invocarApoyoIANivel2();
     void iniciarDueloFinalNivel2();
+    void actualizarDueloFinalNivel2(float deltaTiempo, bool jugadorEnAireAhora);
+    void elegirNuevaPosicionJefeNivel2();
+    void lanzarRafagaCentralJefeNivel2();
     void limpiarEntidadesSecundariasNivel2();
     void actualizarAtaqueNivel2();
     void iniciarAtaqueNivel2();
@@ -237,6 +240,8 @@ private:
     bool teclaIzquierdaPresionada = false;
     bool teclaDerechaPresionada = false;
     bool ataqueNivel2Activo = false;
+    bool bajarPlataformaNivel2 = false;
+    bool golpeJefeAplicadoAtaqueNivel2 = false;
     FaseNivel2 faseNivel2 = FaseNivel2::Runner;
     QGraphicsTextItem*  textoNivel = nullptr;
     QGraphicsTextItem*  textoPuntaje = nullptr;
@@ -248,6 +253,15 @@ private:
     float impulsoPersecucionNivel2 = 0.0f;
     float inicioArenaFinalNivel2 = 0.0f;
     float finArenaFinalNivel2 = 0.0f;
+    float objetivoJefeNivel2X = 0.0f;
+    float objetivoJefeNivel2Y = 0.0f;
+    float tiempoAtaqueJefeNivel2 = 0.0f;
+    float tiempoRafagaJefeNivel2 = 0.0f;
+    int golpesJefeNivel2 = 0;
+    int siguienteRafagaJefeNivel2 = 10;
+    int proyectilesRafagaJefeNivel2 = 0;
+    bool jefeReposicionandoNivel2 = false;
+    bool jefeRafagaCentralNivel2 = false;
     QElapsedTimer tiempoAtaqueNivel2;
     QElapsedTimer tiempoDanioNivel2;
 

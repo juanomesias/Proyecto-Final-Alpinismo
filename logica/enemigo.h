@@ -59,8 +59,6 @@ private:
     void actualizarPatrullero();
     void actualizarVolador();
     void actualizarJefe();
-    void actualizarProyectiles();
-    void lanzarProyectilDireccionado(float direccionX, float direccionY, float velocidadExtra = 0.0f);
 
 public:
     Enemigo(float xInicial = 0.0f,
@@ -84,6 +82,8 @@ public:
                          bool jugadorAtacando = false,
                          bool modoDuelo = false);
     void recibirDanio(int cantidad);
+    void actualizarProyectiles();
+    void lanzarProyectilDireccionado(float direccionX, float direccionY, float velocidadExtra = 0.0f);
 
     void setLimites(float izquierdo, float derecho);
     void setRangoDeteccion(float rango);
