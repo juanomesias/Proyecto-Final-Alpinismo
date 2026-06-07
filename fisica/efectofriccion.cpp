@@ -1,32 +1,34 @@
 #include "efectofriccion.h"
 
-EfectoFriccion::EfectoFriccion(float valor)
-    : Fisica(valor)
+EfectoFriccion::EfectoFriccion(float desaceleracion)
+    : Fisica(desaceleracion)
 {
 }
 
-void EfectoFriccion::aplicar(
-    Entidad* entidad)
+void EfectoFriccion::aplicar(Entidad* entidad)
 {
-    entidad->setVelocidadX(
-        entidad->getVelocidadX() * intensidad
-        );
-}
+    if(!entidad)
+        return;
 
-void EfectoFriccion::aplicarSinFriccion(
-    Entidad* entidad,
-    float impulsoMinimo)
-{
     float velocidad = entidad->getVelocidadX();
 
-    if(velocidad > 0.0f && velocidad < impulsoMinimo)
-        velocidad = impulsoMinimo;
-    else if(velocidad < 0.0f && velocidad > -impulsoMinimo)
-        velocidad = -impulsoMinimo;
-    else if(velocidad == 0.0f)
-        velocidad = impulsoMinimo;
-    else
-        velocidad *= 1.015f;
+    if(velocidad > 0.0f)
+    {
+        velocidad -= intensidad;
+        if(velocidad < 0.0f)
+            velocidad = 0.0f;
+    }
+    else if(velocidad < 0.0f)
+    {
+        velocidad += intensidad;
+        if(velocidad > 0.0f)
+            velocidad = 0.0f;
+    }
 
     entidad->setVelocidadX(velocidad);
+}
+
+void EfectoFriccion::aplicarSinFriccion(Entidad* entidad)
+{
+    aplicar(entidad);
 }

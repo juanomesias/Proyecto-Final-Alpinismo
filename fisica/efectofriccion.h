@@ -6,16 +6,11 @@
 class EfectoFriccion : public Fisica
 {
 public:
-    EfectoFriccion(float valor = 0.90f);
+    EfectoFriccion(float desaceleracion = 0.12f);
 
-    void aplicar(
-        Entidad* entidad
-        ) override;
+    void aplicar(Entidad* entidad) override;
 
-    void aplicarSinFriccion(
-        Entidad* entidad,
-        float impulsoMinimo = 2.2f
-        );
+    void aplicarSinFriccion(Entidad* entidad);
 };
 
 #endif

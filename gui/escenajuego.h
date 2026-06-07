@@ -263,6 +263,7 @@ private:
     bool teclaDerechaPresionada = false;
     bool ataqueNivel2Activo = false;
     bool inmunidadInicioNivel2 = false;
+    bool jugadorEnSuperficieResbalosa = false;
     bool bajarPlataformaNivel2 = false;
     bool golpeJefeAplicadoAtaqueNivel2 = false;
     FaseNivel2 faseNivel2 = FaseNivel2::Runner;

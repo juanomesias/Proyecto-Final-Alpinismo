@@ -362,9 +362,16 @@ void EscenaJuego::actualizarMovimientoHorizontal()
 {
     float velocidadHorizontal = 0.0f;
     const bool proteccionBloqueaAcciones = nivelJuego == 2 && protegiendo;
+    const bool conservarInerciaHielo = nivelJuego == 1 &&
+                                       jugadorEnSuperficieResbalosa &&
+                                       !teclaIzquierdaPresionada &&
+                                       !teclaDerechaPresionada;
     const float velocidadJugador = nivelJuego == 2
                                        ? (jugador.getVelocidadExtra() ? 3.7f : 3.05f)
                                        : jugador.getVelocidadActual();
+
+    if(conservarInerciaHielo)
+        velocidadHorizontal = jugador.getVelocidadX();
 
     if(nivelJuego == 2 &&
         faseNivel2 == FaseNivel2::Runner &&
@@ -379,7 +386,8 @@ void EscenaJuego::actualizarMovimientoHorizontal()
     if(!proteccionBloqueaAcciones && teclaDerechaPresionada)
         velocidadHorizontal += velocidadJugador;
 
-    jugador.setVelocidadX(velocidadHorizontal);
+    if(!conservarInerciaHielo || std::abs(velocidadHorizontal) > 0.01f)
+        jugador.setVelocidadX(velocidadHorizontal);
 
     if(teclaIzquierdaPresionada && !teclaDerechaPresionada)
         mirandoIzquierda = true;
@@ -422,10 +430,10 @@ void EscenaJuego::iniciarAtaqueNivel2()
     if(!ataqueNivel2Visual)
     {
         QPixmap spriteAtaque = spriteAtaqueNivel2.isNull()
-                                   ? QPixmap(70, 45)
-                                   : spriteAtaqueNivel2.scaled(92, 62,
-                                                               Qt::KeepAspectRatio,
-                                                               Qt::SmoothTransformation);
+        ? QPixmap(70, 45)
+        : spriteAtaqueNivel2.scaled(92, 62,
+                                    Qt::KeepAspectRatio,
+                                    Qt::SmoothTransformation);
         ataqueNivel2Visual = escena->addPixmap(spriteAtaque);
         ataqueNivel2Visual->setZValue(22);
     }
@@ -1114,10 +1122,10 @@ void EscenaJuego::sincronizarVisualesEnemigosNivel2()
     while(enemigosNivel2Visuales.size() < enemigosNivel2.size())
     {
         QPixmap sprite = spritePatrulleroNivel2.isNull()
-                             ? QPixmap(62, 62)
-                             : spritePatrulleroNivel2.scaled(70, 70,
-                                                             Qt::KeepAspectRatio,
-                                                             Qt::SmoothTransformation);
+        ? QPixmap(62, 62)
+        : spritePatrulleroNivel2.scaled(70, 70,
+                                        Qt::KeepAspectRatio,
+                                        Qt::SmoothTransformation);
         if(spritePatrulleroNivel2.isNull())
             sprite.fill(QColor(130, 28, 24));
 
@@ -2278,6 +2286,7 @@ void EscenaJuego::actualizarJuego()
     gravedad.aplicar(&jugador);
     jugador.actualizar();
     jugador.setEnSuelo(false);
+    jugadorEnSuperficieResbalosa = false;
 
     if(jugador.getVelocidadY() > 0 && !estabaCayendo)
     {
@@ -2324,7 +2333,13 @@ void EscenaJuego::actualizarJuego()
             if(indicePlataforma < plataformasResbalosas.size() &&
                 plataformasResbalosas[indicePlataforma])
             {
-                friccion.aplicarSinFriccion(&jugador);
+                jugadorEnSuperficieResbalosa = true;
+                if(!teclaIzquierdaPresionada && !teclaDerechaPresionada)
+                    friccion.aplicar(&jugador);
+            }
+            else if(nivelJuego == 1 && !teclaIzquierdaPresionada && !teclaDerechaPresionada)
+            {
+                jugador.setVelocidadX(0.0f);
             }
         }
     }
@@ -2439,7 +2454,7 @@ void EscenaJuego::actualizarJuego()
     if(!spriteEspecialActivo && nivelJuego == 2 && protegiendo && !spriteAgachadoEscudo.isNull())
     {
         jugadorVisual->setPixmap(spriteAgachadoEscudo.scaled(105, 100, Qt::KeepAspectRatio,
-                                                            Qt::SmoothTransformation));
+                                                             Qt::SmoothTransformation));
         spriteEspecialActivo = true;
     }
 

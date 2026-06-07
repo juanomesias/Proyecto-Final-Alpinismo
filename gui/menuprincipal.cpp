@@ -91,7 +91,7 @@ void MenuPrincipal::prepararBotonImagen(QPushButton *boton, const QString& ruta,
         "QPushButton:hover {"
         "padding-top: 2px;"
         "}"
-    );
+        );
 }
 
 void MenuPrincipal::mostrarInicio()
@@ -105,8 +105,8 @@ void MenuPrincipal::mostrarInicio()
     central->setStyleSheet(
         "QWidget {"
         "border-image: url(" + rutaRecurso("fondo_menu.png") + ") 0 0 0 0 stretch stretch;"
-        "}"
-    );
+                                          "}"
+        );
 
     botonIniciar = new QPushButton(central);
     prepararBotonImagen(botonIniciar, rutaRecurso("iniciojuego.png"), 280, 115);
@@ -131,8 +131,8 @@ void MenuPrincipal::mostrarSeleccionDificultad()
     central->setStyleSheet(
         "QWidget {"
         "border-image: url(" + rutaRecurso("fondo.png") + ") 0 0 0 0 stretch stretch;"
-        "}"
-    );
+                                     "}"
+        );
 
     botonFacil = new QPushButton(central);
     botonDificil = new QPushButton(central);

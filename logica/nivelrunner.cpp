@@ -53,13 +53,14 @@ void NivelRunner::cargarNivel()
         if(i % 2 == 0)
             agregarPlataforma(Plataforma(xBase + 650.0f, alturas[(i + 2) % 3], 165, 24));
 
-        agregarObstaculo(Obstaculo(xBase + 300.0f, 470.0f, 18, 40, 40));
+        if(i > 0)
+            agregarObstaculo(Obstaculo(xBase + 303.0f, 470.0f, 18, 34, 40));
         if(i % 2 == 1)
-            agregarObstaculo(Obstaculo(xBase + 620.0f, 470.0f, 22, 46, 46));
-        if(i % 3 == 0)
-            agregarObstaculo(Obstaculo(xBase + 205.0f, alturas[i % 3] - 38.0f, 14, 34, 38));
+            agregarObstaculo(Obstaculo(xBase + 624.0f, 470.0f, 22, 38, 46));
+        if(i > 0 && i % 3 == 0)
+            agregarObstaculo(Obstaculo(xBase + 208.0f, alturas[i % 3] - 38.0f, 14, 28, 38));
         if(i % 4 == 2)
-            agregarObstaculo(Obstaculo(xBase + 505.0f, alturas[(i + 1) % 3] - 34.0f, 16, 32, 34));
+            agregarObstaculo(Obstaculo(xBase + 508.0f, alturas[(i + 1) % 3] - 34.0f, 16, 26, 34));
 
         xBase += anchoSegmento + separacion;
     }

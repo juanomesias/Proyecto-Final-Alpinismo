@@ -7,22 +7,49 @@ PlataformaNivel1::PlataformaNivel1(const Plataforma& plataforma, bool piso, bool
 {
 }
 
-std::vector<PlataformaNivel1> NivelPlataforma::crearPlataformasNivel1(int dificultad,
-                                                                       int anchoPantalla,
-                                                                       int fondosRunner,
-                                                                       int altoPantalla,
-                                                                       int mundoAlto)
+NivelPlataforma::NivelPlataforma()
 {
-    std::vector<PlataformaNivel1> resultado;
+}
+
+NivelPlataforma::NivelPlataforma(int dificultad,
+                                 int anchoPantalla,
+                                 int fondosRunner,
+                                 int altoPantalla,
+                                 int mundoAlto)
+{
+    cargarNivel(dificultad, anchoPantalla, fondosRunner, altoPantalla, mundoAlto);
+}
+
+void NivelPlataforma::actualizar()
+{
+}
+
+void NivelPlataforma::agregarEntrada(const Plataforma& plataforma, bool piso, bool resbalosa)
+{
+    agregarPlataforma(plataforma);
+    plataformasNivel1.emplace_back(plataforma, piso, resbalosa);
+}
+
+void NivelPlataforma::cargarNivel(int dificultad,
+                                  int anchoPantalla,
+                                  int fondosRunner,
+                                  int altoPantalla,
+                                  int mundoAlto)
+{
+    plataformas.clear();
+    obstaculos.clear();
+    plataformasNivel1.clear();
+    setDificultad(dificultad);
+
     const int pisoBaseY = mundoAlto - altoPantalla;
     const int columnaEscaladaX = anchoPantalla * (fondosRunner - 1);
     const bool plataformasConHielo = dificultad == 2;
 
     auto agregar = [&](float x, float y, float ancho, float alto, bool piso)
     {
-        resultado.emplace_back(Plataforma(x, y, ancho, alto),
-                               piso,
-                               plataformasConHielo && !piso);
+        agregarEntrada(Plataforma(x, y, ancho, alto),
+                       piso,
+                       plataformasConHielo && !piso);
     };
 
     auto yBase = [&](float yLocal) -> float
@@ -61,6 +88,23 @@ std::vector<PlataformaNivel1> NivelPlataforma::crearPlataformasNivel1(int dificu
     }
 
     agregar(columnaEscaladaX + 300, 560, 500, 50, true);
+}
 
-    return resultado;
+const std::vector<PlataformaNivel1>& NivelPlataforma::getPlataformasNivel1() const
+{
+    return plataformasNivel1;
+}
+
+std::vector<PlataformaNivel1> NivelPlataforma::crearPlataformasNivel1(int dificultad,
+                                                                      int anchoPantalla,
+                                                                      int fondosRunner,
+                                                                      int altoPantalla,
+                                                                      int mundoAlto)
+{
+    NivelPlataforma nivel(dificultad,
+                          anchoPantalla,
+                          fondosRunner,
+                          altoPantalla,
+                          mundoAlto);
+    return nivel.getPlataformasNivel1();
 }
